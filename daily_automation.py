@@ -43,18 +43,10 @@ def get_media_in_dir(directory):
             full_path = os.path.join(directory, f)
             if os.path.isfile(full_path) and f.lower().endswith(valid_exts):
                 files.append(full_path)
-    # Sort files naturally by filename (e.g. 1_みおち.jpg, 2_みなみ.jpg, ...)
     files.sort(key=lambda x: os.path.basename(x))
     return files
 
 def parse_folder_titles(folder_name):
-    """
-    Extract title & subtitle from folder name.
-    Examples:
-      - "1029_誰が1番好き？_オパオパダンス4選" -> ("誰が1番好き？", "オパオパダンス4選")
-      - "1029_オパオパダンス4選" -> ("誰が1番好き？", "オパオパダンス4選")
-      - "20261029" -> ("誰が1番好き？", "2026年10月29日 比較動画")
-    """
     today_str = datetime.date.today().strftime("%Y年%m月%d日")
     default_title = "誰が1番好き？"
     default_subtitle = f"{today_str} 比較動画"
@@ -72,9 +64,10 @@ def parse_folder_titles(folder_name):
     else:
         return default_title, default_subtitle
 
-def find_target_folder_and_files(base_dir):
+def find_all_target_folders_and_files(base_dir):
     """
-    Find today's date folder (e.g. 1029, 1029_ダンス選, 2026-10-29_タイトル, etc.)
+    Find ALL folders matching today's date (or all subfolders if multiple)
+    Returns a list of tuples: [(folder_name, [files]), ...]
     """
     now = datetime.date.today()
     date_patterns = [
@@ -86,52 +79,53 @@ def find_target_folder_and_files(base_dir):
         f"{now.month}月{now.day}日",
     ]
 
-    subdirs = []
+    matched_folders = []
+    all_subdirs = []
+
     if os.path.exists(base_dir):
         for item in os.listdir(base_dir):
             p = os.path.join(base_dir, item)
             if os.path.isdir(p):
-                subdirs.append((item, p))
+                all_subdirs.append((item, p))
 
-    # 1. Match today's folder
-    for name, p in subdirs:
+    # 1. Collect all matching today's date
+    for name, p in all_subdirs:
         for pat in date_patterns:
             if pat in name:
-                print(f"[Automation] Matched date folder: {name}")
                 media = get_media_in_dir(p)
                 if media:
-                    return name, media
+                    matched_folders.append((name, media))
+                break
 
-    # 2. Latest folder fallback
-    if subdirs:
-        subdirs.sort(key=lambda x: x[0], reverse=True)
-        for name, p in subdirs:
+    if matched_folders:
+        matched_folders.sort(key=lambda x: x[0])
+        return matched_folders
+
+    # 2. If no today's folder, use latest subfolders
+    if all_subdirs:
+        all_subdirs.sort(key=lambda x: x[0], reverse=True)
+        for name, p in all_subdirs:
             media = get_media_in_dir(p)
             if media:
-                print(f"[Automation] Using latest folder: {name}")
-                return name, media
+                matched_folders.append((name, media))
+        if matched_folders:
+            return matched_folders
 
-    # 3. Root fallback
+    # 3. Fallback: check base_dir itself
     root_media = get_media_in_dir(base_dir)
     if root_media:
-        return "root", root_media
+        return [("root", root_media)]
 
+    # 4. Fallback to public/videos
     fallback_dir = os.path.join(PROJECT_DIR, "public", "videos")
-    return "default", get_media_in_dir(fallback_dir)
+    return [("default", get_media_in_dir(fallback_dir))]
 
 def clean_person_name(filename, default_name):
-    """
-    Extract person name from filename:
-    '1_みおち.mp4' -> 'みおち'
-    '02-みなみ.png' -> 'みなみ'
-    '金丸紗希.jpg' -> '金丸紗希'
-    """
     raw = os.path.splitext(filename)[0]
-    # Remove leading numbering like "01_", "1-", "1. ", etc.
     cleaned = re.sub(r'^[0-9]+[_\-\.\s]*', '', raw).strip()
     return cleaned if cleaned else default_name
 
-def render_single_video(config, media_group, output_path, title, subtitle, part_index=1):
+def render_single_video(config, media_group, output_path, title, subtitle, render_id=1):
     public_videos_dir = os.path.join(PROJECT_DIR, "public", "videos")
     os.makedirs(public_videos_dir, exist_ok=True)
 
@@ -143,8 +137,7 @@ def render_single_video(config, media_group, output_path, title, subtitle, part_
         filename = os.path.basename(src_file)
         ext = os.path.splitext(filename)[1].lower()
         
-        # Save as clean safe filename to avoid OS encoding issues with Remotion staticFile
-        safe_filename = f"auto_slot_{part_index}_{i}{ext}"
+        safe_filename = f"slot_{render_id}_{i}{ext}"
         dst_path = os.path.join(public_videos_dir, safe_filename)
         shutil.copy2(src_file, dst_path)
 
@@ -157,7 +150,7 @@ def render_single_video(config, media_group, output_path, title, subtitle, part_
             "startOffset": 0
         })
 
-    # User's chosen fixed styles
+    # Fixed USER STYLES (Clean 2 lines guaranteed)
     props = {
         "title": title,
         "subtitle": subtitle,
@@ -177,7 +170,7 @@ def render_single_video(config, media_group, output_path, title, subtitle, part_
         "items": items
     }
 
-    temp_props_path = os.path.join(PROJECT_DIR, f"_auto_props_{part_index}.json")
+    temp_props_path = os.path.join(PROJECT_DIR, f"_auto_props_{render_id}.json")
     with open(temp_props_path, "w", encoding="utf-8") as f:
         json.dump(props, f, ensure_ascii=False, indent=2)
 
@@ -235,7 +228,7 @@ def send_to_discord(webhook_url, video_path, message_text):
 
 def main():
     print("=" * 60)
-    print(" TikTok Compare Video Daily Automation (Dynamic Title & Names)")
+    print(" TikTok Compare Video Daily Automation (Multi-Folder & Multi-Video)")
     print(f" Execution Time: {datetime.datetime.now()}")
     print("=" * 60)
 
@@ -247,29 +240,15 @@ def main():
     if gdrive_url:
         download_from_gdrive(gdrive_url, gdrive_dir)
 
-    # 2. Target folder selection
+    # 2. Collect target folders
     local_drive = config.get("drive_folder_path")
     search_base = gdrive_dir
     if not os.path.exists(search_base) or not os.listdir(search_base):
         if local_drive and os.path.exists(local_drive):
             search_base = local_drive
 
-    folder_name, media_files = find_target_folder_and_files(search_base)
-    print(f"[Automation] Target Folder: '{folder_name}', Found {len(media_files)} files")
-
-    if not media_files:
-        raise RuntimeError("No media files found to generate video.")
-
-    # 3. Parse title & subtitle from folder name
-    base_title, base_subtitle = parse_folder_titles(folder_name)
-    print(f"[Automation] Title line 1: '{base_title}'")
-    print(f"[Automation] Title line 2: '{base_subtitle}'")
-
-    # 4. Chunk files into groups of 4
-    chunk_size = 4
-    media_chunks = [media_files[i:i + chunk_size] for i in range(0, len(media_files), chunk_size)]
-    total_parts = len(media_chunks)
-    print(f"[Automation] Generating {total_parts} video(s)...")
+    target_folders = find_all_target_folders_and_files(search_base)
+    print(f"[Automation] Found {len(target_folders)} target folder(s) to process.")
 
     today_str = datetime.date.today().strftime("%Y-%m-%d")
     out_dir = os.path.join(PROJECT_DIR, "out")
@@ -277,27 +256,37 @@ def main():
     webhook_url = config.get("discord_webhook_url")
     today_jp = datetime.date.today().strftime("%Y年%m月%d日")
 
-    for idx, chunk in enumerate(media_chunks, 1):
-        while len(chunk) < 4:
-            chunk.append(chunk[0])
+    global_video_count = 0
 
-        current_subtitle = f"{base_subtitle} #{idx}" if total_parts > 1 else base_subtitle
-        out_video_name = f"compare_{today_str}_part{idx}.mp4" if total_parts > 1 else f"compare_{today_str}.mp4"
-        out_video_path = os.path.join(out_dir, out_video_name)
+    for f_idx, (folder_name, media_files) in enumerate(target_folders, 1):
+        print("-" * 50)
+        print(f"[Automation] Processing Folder [{f_idx}/{len(target_folders)}]: '{folder_name}' ({len(media_files)} files)")
 
-        # Render
-        render_single_video(config, chunk, out_video_path, title=base_title, subtitle=current_subtitle, part_index=idx)
+        base_title, base_subtitle = parse_folder_titles(folder_name)
+        
+        # Chunk into groups of 4
+        chunk_size = 4
+        chunks = [media_files[i:i + chunk_size] for i in range(0, len(media_files), chunk_size)]
 
-        # Deliver to Discord
-        if total_parts > 1:
-            msg = f"🌅 **【朝の自動納品】{base_title} - {current_subtitle} ({idx}/{total_parts})**\n（日付: {today_jp} / フォルダ: `{folder_name}`）"
-        else:
-            msg = f"🌅 **【朝の自動納品】{base_title} - {current_subtitle}**\n本日もよろしくお願いします！（日付: {today_jp}）"
+        for c_idx, chunk in enumerate(chunks, 1):
+            global_video_count += 1
+            while len(chunk) < 4:
+                chunk.append(chunk[0])
 
-        send_to_discord(webhook_url, out_video_path, msg)
+            current_subtitle = f"{base_subtitle} #{c_idx}" if len(chunks) > 1 else base_subtitle
+            safe_folder_name = re.sub(r'[^a-zA-Z0-9_-]', '_', folder_name)[:20]
+            out_video_name = f"compare_{today_str}_folder{f_idx}_part{c_idx}.mp4"
+            out_video_path = os.path.join(out_dir, out_video_name)
+
+            # Render
+            render_single_video(config, chunk, out_video_path, title=base_title, subtitle=current_subtitle, render_id=global_video_count)
+
+            # Deliver to Discord
+            msg = f"🌅 **【朝の自動納品】{base_title} - {current_subtitle}**\n（日付: {today_jp} / フォルダ: `{folder_name}` / 計{len(chunk)}素材）"
+            send_to_discord(webhook_url, out_video_path, msg)
 
     print("=" * 60)
-    print(f"[Automation] Successfully created & delivered {total_parts} video(s)!")
+    print(f"[Automation] Finished! Total {global_video_count} video(s) created and delivered to Discord.")
     print("=" * 60)
 
 if __name__ == "__main__":
