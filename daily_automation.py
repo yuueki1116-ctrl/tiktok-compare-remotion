@@ -122,7 +122,7 @@ def find_target_folder_and_files(base_dir):
 def clean_person_name(filename, default_name):
     """
     Extract person name from filename:
-    '1_みおち.jpg' -> 'みおち'
+    '1_みおち.mp4' -> 'みおち'
     '02-みなみ.png' -> 'みなみ'
     '金丸紗希.jpg' -> '金丸紗希'
     """
@@ -131,7 +131,7 @@ def clean_person_name(filename, default_name):
     cleaned = re.sub(r'^[0-9]+[_\-\.\s]*', '', raw).strip()
     return cleaned if cleaned else default_name
 
-def render_single_video(config, media_group, output_path, title, subtitle):
+def render_single_video(config, media_group, output_path, title, subtitle, part_index=1):
     public_videos_dir = os.path.join(PROJECT_DIR, "public", "videos")
     os.makedirs(public_videos_dir, exist_ok=True)
 
@@ -141,16 +141,19 @@ def render_single_video(config, media_group, output_path, title, subtitle):
     for i in range(4):
         src_file = media_group[i] if i < len(media_group) else media_group[0]
         filename = os.path.basename(src_file)
-        dst_path = os.path.join(public_videos_dir, filename)
-        if os.path.abspath(src_file) != os.path.abspath(dst_path):
-            shutil.copy2(src_file, dst_path)
+        ext = os.path.splitext(filename)[1].lower()
+        
+        # Save as clean safe filename to avoid OS encoding issues with Remotion staticFile
+        safe_filename = f"auto_slot_{part_index}_{i}{ext}"
+        dst_path = os.path.join(public_videos_dir, safe_filename)
+        shutil.copy2(src_file, dst_path)
 
         def_name = default_names[i] if i < len(default_names) else f"No.{i+1}"
         name = clean_person_name(filename, def_name)
 
         items.append({
             "name": name,
-            "videoSrc": f"videos/{filename}",
+            "videoSrc": f"videos/{safe_filename}",
             "startOffset": 0
         })
 
@@ -174,24 +177,32 @@ def render_single_video(config, media_group, output_path, title, subtitle):
         "items": items
     }
 
-    temp_props_path = os.path.join(PROJECT_DIR, f"_auto_props_{datetime.datetime.now().timestamp()}.json")
+    temp_props_path = os.path.join(PROJECT_DIR, f"_auto_props_{part_index}.json")
     with open(temp_props_path, "w", encoding="utf-8") as f:
         json.dump(props, f, ensure_ascii=False, indent=2)
 
     print(f"[Automation] Rendering: '{title}' / '{subtitle}'")
     print(f"[Automation] Members: {[it['name'] for it in items]}")
     
+    env = os.environ.copy()
+    env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0"
+
     if sys.platform == "win32":
         cmd = [
-            "cmd.exe", "/c",
-            f"cd /d \"{PROJECT_DIR}\" && set NODE_TLS_REJECT_UNAUTHORIZED=0 && npx.cmd remotion render src/index.ts CompareVideo \"{output_path}\" --props=\"{temp_props_path}\""
+            "npx.cmd", "remotion", "render",
+            "src/index.ts", "CompareVideo",
+            output_path,
+            f"--props={temp_props_path}"
         ]
+        ret = subprocess.run(cmd, cwd=PROJECT_DIR, env=env, shell=True)
     else:
         cmd = [
-            "npx", "remotion", "render", "src/index.ts", "CompareVideo", output_path, f"--props={temp_props_path}"
+            "npx", "remotion", "render",
+            "src/index.ts", "CompareVideo",
+            output_path,
+            f"--props={temp_props_path}"
         ]
-
-    ret = subprocess.run(cmd, cwd=PROJECT_DIR)
+        ret = subprocess.run(cmd, cwd=PROJECT_DIR, env=env)
 
     if os.path.exists(temp_props_path):
         os.remove(temp_props_path)
@@ -275,7 +286,7 @@ def main():
         out_video_path = os.path.join(out_dir, out_video_name)
 
         # Render
-        render_single_video(config, chunk, out_video_path, title=base_title, subtitle=current_subtitle)
+        render_single_video(config, chunk, out_video_path, title=base_title, subtitle=current_subtitle, part_index=idx)
 
         # Deliver to Discord
         if total_parts > 1:
