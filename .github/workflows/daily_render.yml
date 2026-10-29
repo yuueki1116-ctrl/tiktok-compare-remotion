@@ -1,0 +1,49 @@
+name: Daily TikTok Compare Video Render & Deliver
+
+on:
+  schedule:
+    # 毎日 日本時間 朝6:00 (UTC 21:00) に実行
+    - cron: '0 21 * * *'
+  workflow_dispatch: # GitHubのWeb画面からワンクリックでテスト実行も可能
+
+jobs:
+  render-and-deliver:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install System Dependencies for Remotion / Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2
+
+      - name: Install Node & Python Dependencies
+        run: |
+          npm install
+          pip install gdown requests
+
+      - name: Run Automation (Download Drive -> Remotion Render -> Discord Deliver)
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL || 'https://discord.com/api/webhooks/1565200135997231127/16kqGmBvGWOetAIIR5e-7f5unaSW_cf3L68_JLA4mM1xvmCsq_WRxlF214IsIaEEZxqf' }}
+          GDRIVE_FOLDER_URL: ${{ secrets.GDRIVE_FOLDER_URL || 'https://drive.google.com/drive/folders/1WArudMr8ztyexZ_EAJdNdI7tCzBRpqCX?usp=sharing' }}
+        run: |
+          python daily_automation.py
+
+      - name: Upload Output Video Artifact (Backup)
+        uses: actions/upload-artifact@v4
+        with:
+          name: finished-compare-video
+          path: out/*.mp4
+          retention-days: 7

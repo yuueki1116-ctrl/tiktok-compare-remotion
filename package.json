@@ -1,0 +1,26 @@
+{
+  "name": "tiktok-compare-remotion",
+  "version": "1.0.0",
+  "description": "TikTok 4-way comparison video generator with Remotion and Web Preview GUI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "remotion": "remotion preview src/index.ts",
+    "build": "remotion render src/index.ts CompareVideo out/video.mp4"
+  },
+  "dependencies": {
+    "@remotion/bundler": "^4.0.200",
+    "@remotion/cli": "^4.0.200",
+    "@remotion/renderer": "^4.0.200",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.200"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "typescript": "^5.4.5"
+  }
+}

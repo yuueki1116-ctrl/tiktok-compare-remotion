@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TikTok 4分割 比較動画エディタ (Remotion Studio)</title>
+  <!-- Google Fonts for TikTok & YouTube Shorts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DotGothic16&family=Hachi+Maru+Pop&family=Kaisei+Tokumin:wght@700;800&family=Kiwi+Maru:wght@500;800&family=M+PLUS+Rounded+1c:wght@800;900&family=Mochiy+Pop+One&family=Noto+Sans+JP:wght@800;900&family=Potta+One&family=Reggae+One&family=RocknRoll+One&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1015;
+      --card: #181920;
+      --card-border: #272833;
+      --text: #ffffff;
+      --text-muted: #8e90a6;
+      --primary: #ff0050;
+      --primary-hover: #e00045;
+      --secondary: #00f2fe;
+      --accent-pink: #ff2d78;
+      --input-bg: #22232e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--card-border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.5px;
+    }
+
+    .brand span {
+      background: linear-gradient(135deg, #ff0050, #00f2fe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .main-container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 57px);
+      overflow: hidden;
+    }
+
+    /* Left Panel: Settings */
+    .controls-panel {
+      width: 510px;
+      min-width: 460px;
+      background: var(--card);
+      border-right: 1px solid var(--card-border);
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--secondary);
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #ccc;
+    }
+
+    input[type="text"], input[type="number"], select {
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: #fff;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus, input[type="number"]:focus, select:focus {
+      border-color: var(--primary);
+    }
+
+    /* Preset font badges */
+    .font-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .font-badge {
+      background: #252736;
+      border: 1px solid var(--card-border);
+      color: #ddd;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .font-badge:hover {
+      background: #33364a;
+      border-color: var(--secondary);
+      color: #fff;
+    }
+
+    .font-badge.active {
+      background: linear-gradient(135deg, rgba(255, 0, 80, 0.2), rgba(0, 242, 254, 0.2));
+      border-color: var(--primary);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .grid-2x2-config {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .quadrant-card {
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px;
+      position: relative;
+    }
+
+    .quadrant-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--secondary);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .row-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .color-picker {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+    }
+
+    input[type="color"] {
+      -webkit-appearance: none;
+      border: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      background: none;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .slider-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--primary);
+    }
+
+    .slider-val {
+      font-size: 0.8rem;
+      min-width: 38px;
+      text-align: right;
+      color: var(--text-muted);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #ff0050, #d6006e);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(255, 0, 80, 0.4);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #e00045, #b8005e);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #2a2b38;
+      color: #fff;
+    }
+
+    .btn-secondary:hover {
+      background: #363847;
+    }
+
+    /* Right Panel: Preview */
+    .preview-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+      background: radial-gradient(circle at center, #181a24 0%, #0d0e14 100%);
+    }
+
+    /* 9:16 Phone Canvas */
+    .phone-container {
+      width: 360px;
+      height: 640px;
+      background: #000;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 0 4px #2b2c3a;
+      position: relative;
+      user-select: none;
+    }
+
+    .phone-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      width: 100%;
+      height: 100%;
+      gap: 2px;
+      background: #000;
+    }
+
+    .phone-cell {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #111;
+    }
+
+    .phone-cell video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .cell-name-overlay {
+      position: absolute;
+      bottom: 12px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      pointer-events: none;
+      z-index: 10;
+      transition: opacity 0.3s;
+    }
+
+    .cell-name-text {
+      color: #fff;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      -webkit-text-stroke: 4px #d6006e;
+      paint-order: stroke fill;
+      text-shadow: 0 0 6px #d6006e, 0 3px 5px rgba(0,0,0,0.8);
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+    }
+
+    /* Center Title Overlay */
+    .center-title-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 92%;
+      text-align: center;
+      pointer-events: none;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.3s, transform 0.3s;
+      font-family: 'Mochiy Pop One', sans-serif;
+    }
+
+    .main-title-text {
+      color: #ffffff;
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      -webkit-text-stroke: 5px #ff2d78;
+      paint-order: stroke fill;
+      text-shadow: 0 0 10px #ff2d78, 0 4px 8px rgba(0, 0, 0, 0.7);
+    }
+
+    .subtitle-text {
+      color: #ffffff;
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      -webkit-text-stroke: 5px #ff2d78;
+      paint-order: stroke fill;
+      text-shadow: 0 0 10px #ff2d78, 0 4px 8px rgba(0, 0, 0, 0.7);
+    }
+
+    /* Player Controls bar */
+    .player-controls {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 18px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 40px;
+      padding: 8px 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .play-btn {
+      background: var(--primary);
+      border: none;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    .timeline-slider {
+      width: 240px;
+      accent-color: var(--primary);
+    }
+
+    .time-display {
+      font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-muted);
+    }
+
+    /* Modal / Progress overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(5px);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 30px;
+      width: 440px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+    }
+
+    .progress-bar-bg {
+      background: #2a2b38;
+      height: 12px;
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+
+    .progress-bar-fill {
+      background: linear-gradient(90deg, #ff0050, #00f2fe);
+      width: 0%;
+      height: 100%;
+      transition: width 0.3s;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zm-9 9h7v7H4v-7zm9 0h7v7h-7v-7z" fill="url(#p-grad)"/>
+        <defs>
+          <linearGradient id="p-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#ff0050"/>
+            <stop offset="1" stop-color="#00f2fe"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <span>TikTok 4分割比較 Remotion Studio</span>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn btn-secondary" onclick="exportJSON()">設定JSON保存</button>
+      <button class="btn btn-primary" onclick="startRender()">Remotionで書き出し (Render MP4)</button>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <!-- Left: Controls -->
+    <div class="controls-panel">
+      <!-- Titles & Typography -->
+      <div>
+        <div class="section-title">メインタイトル & フォント設定</div>
+        
+        <!-- Font Quick Presets -->
+        <label style="margin-bottom: 6px; display: block;">ワンクリック・人気フォント切替</label>
+        <div class="font-presets">
+          <span class="font-badge active" onclick="applyFontPreset('\'Mochiy Pop One\', sans-serif')">💖 ぷっくり丸文字 (Mochiy Pop)</span>
+          <span class="font-badge" onclick="applyFontPreset('\'Hachi Maru Pop\', cursive')">🎀 80sポップ女子 (Hachi Maru)</span>
+          <span class="font-badge" onclick="applyFontPreset('\'Dela Gothic One\', sans-serif')">🔥 超極太インパクト (Dela Gothic)</span>
+          <span class="font-badge" onclick="applyFontPreset('\'RocknRoll One\', sans-serif')">⚡ 元気ポップ (RocknRoll)</span>
+          <span class="font-badge" onclick="applyFontPreset('\'Zen Maru Gothic\', sans-serif')">✨ キレイめ丸ゴシック (Zen Maru)</span>
+          <span class="font-badge" onclick="applyFontPreset('\'Kiwi Maru\', serif')">🌸 手書き風エモ (Kiwi Maru)</span>
+          <span class="font-badge" onclick="applyFontPreset('\'Kaisei Tokumin\', serif')">📖 エモい太明朝 (Kaisei)</span>
+          <span class="font-badge" onclick="applyFontPreset('\'Potta One\', cursive')">🎨 筆文字ポップ (Potta One)</span>
+        </div>
+
+        <div class="form-group">
+          <label>タイトル用フォント詳細リスト</label>
+          <select id="sel-title-font" onchange="updateUI()">
+            <option value="'Mochiy Pop One', sans-serif" selected>Mochiy Pop One (ぷっくり丸文字・可愛い✨)</option>
+            <option value="'Hachi Maru Pop', cursive">Hachi Maru Pop (昭和レトロ・女子ポップ🎀)</option>
+            <option value="'Dela Gothic One', sans-serif">Dela Gothic One (超極太・TikTok鉄板🔥)</option>
+            <option value="'RocknRoll One', sans-serif">RocknRoll One (元気・少年誌ポップ⚡)</option>
+            <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic (洗練された太丸ゴシック)</option>
+            <option value="'Kiwi Maru', serif">Kiwi Maru (手書き風・清楚可愛い🌸)</option>
+            <option value="'Kaisei Tokumin', serif">Kaisei Tokumin (モダン太明朝・エモい📖)</option>
+            <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c (王道太丸ゴシック)</option>
+            <option value="'Potta One', cursive">Potta One (ポップ筆文字風)</option>
+            <option value="'Reggae One', sans-serif">Reggae One (少年漫画タイトル風)</option>
+            <option value="'Noto Sans JP', sans-serif">Noto Sans JP (王道極太ゴシック)</option>
+            <option value="'DotGothic16', sans-serif">DotGothic16 (レトロドット)</option>
+            <option value="'HGP創英角ﾎﾟｯﾌﾟ体', 'Yu Gothic', sans-serif">HGP創英角ポップ体</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>タイトル 1行目</label>
+          <input type="text" id="inp-title" value="誰が1番好き？" oninput="updateUI()">
+        </div>
+        <div class="form-group">
+          <label>タイトル 2行目 (企画名・ダンス名)</label>
+          <input type="text" id="inp-subtitle" value="オパオパダンス4選" oninput="updateUI()">
+        </div>
+
+        <div class="row-2col">
+          <div class="form-group">
+            <label>タイトル文字サイズ</label>
+            <div class="slider-row">
+              <input type="range" id="inp-title-size" min="0.7" max="1.4" step="0.05" value="1.1" oninput="updateUI()">
+              <span class="slider-val" id="val-title-size">1.10x</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>タイトルフチ太さ</label>
+            <div class="slider-row">
+              <input type="range" id="inp-title-stroke-width" min="3" max="16" step="1" value="11" oninput="updateUI()">
+              <span class="slider-val" id="val-title-stroke">11px</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row-2col">
+          <div class="form-group">
+            <label>表示時間 (秒)</label>
+            <input type="number" id="inp-title-dur" value="1.5" step="0.1" min="0" max="30" oninput="updateUI()">
+          </div>
+          <div class="form-group">
+            <label>動画全体の長さ (秒)</label>
+            <input type="number" id="inp-video-dur" value="7.0" step="0.5" min="2" max="60" oninput="updateUI()">
+          </div>
+        </div>
+
+        <div class="color-row" style="margin-top: 6px;">
+          <div class="color-picker">
+            <label>文字色:</label>
+            <input type="color" id="inp-title-color" value="#ffffff" oninput="updateUI()">
+          </div>
+          <div class="color-picker">
+            <label>フチ色:</label>
+            <input type="color" id="inp-title-stroke" value="#ff2d78" oninput="updateUI()">
+          </div>
+        </div>
+      </div>
+
+      <hr style="border: 0; border-top: 1px solid var(--card-border);">
+
+      <!-- 4 Quadrants & Names -->
+      <div>
+        <div class="section-title">名前テロップ & 配置設定</div>
+
+        <div class="form-group">
+          <label>名前用フォント</label>
+          <select id="sel-name-font" onchange="updateUI()">
+            <option value="'M PLUS Rounded 1c', sans-serif" selected>M PLUS Rounded 1c (太丸ゴシック・可愛い✨)</option>
+            <option value="'Mochiy Pop One', sans-serif">Mochiy Pop One (ぷっくり丸文字)</option>
+            <option value="'Hachi Maru Pop', cursive">Hachi Maru Pop (昭和レトロポップ)</option>
+            <option value="'Dela Gothic One', sans-serif">Dela Gothic One (超極太・インパクト🔥)</option>
+            <option value="'RocknRoll One', sans-serif">RocknRoll One (元気ポップ)</option>
+            <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic (キレイめ丸ゴシック)</option>
+            <option value="'Noto Sans JP', sans-serif">Noto Sans JP (王道極太ゴシック)</option>
+            <option value="'HGP創英角ﾎﾟｯﾌﾟ体', 'Yu Gothic', sans-serif">HGP創英角ポップ体</option>
+          </select>
+        </div>
+
+        <div class="row-2col">
+          <div class="form-group">
+            <label>名前文字サイズ</label>
+            <div class="slider-row">
+              <input type="range" id="inp-name-size" min="0.7" max="1.4" step="0.05" value="1.0" oninput="updateUI()">
+              <span class="slider-val" id="val-name-size">1.0x</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>名前フチ太さ</label>
+            <div class="slider-row">
+              <input type="range" id="inp-name-stroke-width" min="3" max="14" step="1" value="8" oninput="updateUI()">
+              <span class="slider-val" id="val-name-stroke">8px</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="color-row" style="margin-bottom: 14px;">
+          <div class="color-picker">
+            <label>名前文字色:</label>
+            <input type="color" id="inp-name-color" value="#ffffff" oninput="updateUI()">
+          </div>
+          <div class="color-picker">
+            <label>名前フチ色:</label>
+            <input type="color" id="inp-name-stroke" value="#d6006e" oninput="updateUI()">
+          </div>
+        </div>
+
+        <div class="grid-2x2-config">
+          <!-- Top Left -->
+          <div class="quadrant-card">
+            <div class="quadrant-label">
+              <span>↖ 左上 (Top-Left)</span>
+              <label style="font-size: 0.7rem; display: flex; align-items: center; gap: 3px; cursor: pointer;">
+                <input type="radio" name="audio-radio" value="0" checked onchange="updateUI()"> 音声
+              </label>
+            </div>
+            <div class="form-group">
+              <label>名前</label>
+              <input type="text" id="name-0" value="みおち" oninput="updateUI()">
+            </div>
+            <div class="form-group">
+              <label>動画ファイル</label>
+              <select id="video-select-0" onchange="changeVideo(0, this.value)"></select>
+            </div>
+            <div class="form-group">
+              <label>開始オフセット (秒)</label>
+              <input type="number" id="offset-0" value="0" step="0.1" oninput="updateUI()">
+            </div>
+          </div>
+
+          <!-- Top Right -->
+          <div class="quadrant-card">
+            <div class="quadrant-label">
+              <span>↗ 右上 (Top-Right)</span>
+              <label style="font-size: 0.7rem; display: flex; align-items: center; gap: 3px; cursor: pointer;">
+                <input type="radio" name="audio-radio" value="1" onchange="updateUI()"> 音声
+              </label>
+            </div>
+            <div class="form-group">
+              <label>名前</label>
+              <input type="text" id="name-1" value="みなみ" oninput="updateUI()">
+            </div>
+            <div class="form-group">
+              <label>動画ファイル</label>
+              <select id="video-select-1" onchange="changeVideo(1, this.value)"></select>
+            </div>
+            <div class="form-group">
+              <label>開始オフセット (秒)</label>
+              <input type="number" id="offset-1" value="0" step="0.1" oninput="updateUI()">
+            </div>
+          </div>
+
+          <!-- Bottom Left -->
+          <div class="quadrant-card">
+            <div class="quadrant-label">
+              <span>↙ 左下 (Bottom-Left)</span>
+              <label style="font-size: 0.7rem; display: flex; align-items: center; gap: 3px; cursor: pointer;">
+                <input type="radio" name="audio-radio" value="2" onchange="updateUI()"> 音声
+              </label>
+            </div>
+            <div class="form-group">
+              <label>名前</label>
+              <input type="text" id="name-2" value="金丸紗希" oninput="updateUI()">
+            </div>
+            <div class="form-group">
+              <label>動画ファイル</label>
+              <select id="video-select-2" onchange="changeVideo(2, this.value)"></select>
+            </div>
+            <div class="form-group">
+              <label>開始オフセット (秒)</label>
+              <input type="number" id="offset-2" value="0" step="0.1" oninput="updateUI()">
+            </div>
+          </div>
+
+          <!-- Bottom Right -->
+          <div class="quadrant-card">
+            <div class="quadrant-label">
+              <span>↘ 右下 (Bottom-Right)</span>
+              <label style="font-size: 0.7rem; display: flex; align-items: center; gap: 3px; cursor: pointer;">
+                <input type="radio" name="audio-radio" value="3" onchange="updateUI()"> 音声
+              </label>
+            </div>
+            <div class="form-group">
+              <label>名前</label>
+              <input type="text" id="name-3" value="もえ" oninput="updateUI()">
+            </div>
+            <div class="form-group">
+              <label>動画ファイル</label>
+              <select id="video-select-3" onchange="changeVideo(3, this.value)"></select>
+            </div>
+            <div class="form-group">
+              <label>開始オフセット (秒)</label>
+              <input type="number" id="offset-3" value="0" step="0.1" oninput="updateUI()">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Preview Screen -->
+    <div class="preview-panel">
+      <!-- 9:16 Phone Canvas -->
+      <div class="phone-container" id="phoneContainer">
+        <div class="phone-grid">
+          <div class="phone-cell">
+            <video id="v-0" playsinline muted preload="auto"></video>
+            <div class="cell-name-overlay"><span class="cell-name-text" id="disp-name-0">みおち</span></div>
+          </div>
+          <div class="phone-cell">
+            <video id="v-1" playsinline muted preload="auto"></video>
+            <div class="cell-name-overlay"><span class="cell-name-text" id="disp-name-1">みなみ</span></div>
+          </div>
+          <div class="phone-cell">
+            <video id="v-2" playsinline muted preload="auto"></video>
+            <div class="cell-name-overlay"><span class="cell-name-text" id="disp-name-2">金丸紗希</span></div>
+          </div>
+          <div class="phone-cell">
+            <video id="v-3" playsinline muted preload="auto"></video>
+            <div class="cell-name-overlay"><span class="cell-name-text" id="disp-name-3">もえ</span></div>
+          </div>
+        </div>
+
+        <!-- Center Hook Title -->
+        <div class="center-title-container" id="centerTitle">
+          <div class="main-title-text" id="disp-title">誰が1番好き？</div>
+          <div class="subtitle-text" id="disp-subtitle">オパオパダンス4選</div>
+        </div>
+      </div>
+
+      <!-- Playback Bar -->
+      <div class="player-controls">
+        <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+        <input type="range" class="timeline-slider" id="timeline" min="0" max="7" step="0.05" value="0" oninput="seekTo(this.value)">
+        <span class="time-display" id="timeDisplay">0.0s / 7.0s</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Render Modal -->
+  <div class="modal-overlay" id="renderModal">
+    <div class="modal-content">
+      <h3 id="modalTitle" style="margin-bottom: 10px;">Remotion レンダリング中...</h3>
+      <p id="modalDesc" style="color: var(--text-muted); font-size: 0.9rem;">Remotionで4動画を合成・エンコードしています</p>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div id="progressText" style="font-weight: 700; margin-bottom: 20px;">0%</div>
+      <div id="modalActions" style="display: none; gap: 10px; justify-content: center;">
+        <a id="downloadLink" class="btn btn-primary" download>完成動画をダウンロード (MP4)</a>
+        <button class="btn btn-secondary" onclick="closeModal()">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const videos = [
+      document.getElementById('v-0'),
+      document.getElementById('v-1'),
+      document.getElementById('v-2'),
+      document.getElementById('v-3'),
+    ];
+
+    let isPlaying = false;
+    let availableVideos = [];
+
+    const defaultMapping = [
+      'videos/v1c044g50000dbbl47nog65kps1bcong.mp4', // みおち
+      'videos/v14044g50000datr2knog65gphn6o3c0.mp4', // みなみ
+      'videos/v14044g50000davp1v7og65gkm0vl580.mp4', // 金丸紗希
+      'videos/v1c044g50000dav3khnog65l82rllud0.mp4', // もえ
+    ];
+
+    async function init() {
+      try {
+        const res = await fetch('/api/videos');
+        const data = await res.json();
+        if (data.success) {
+          availableVideos = data.videos;
+          populateVideoSelects();
+        }
+      } catch (err) {
+        console.warn('API error, using default mapping:', err);
+      }
+
+      videos.forEach((v, i) => {
+        v.src = defaultMapping[i];
+      });
+
+      updateUI();
+      setupTimeUpdate();
+    }
+
+    function populateVideoSelects() {
+      for (let i = 0; i < 4; i++) {
+        const sel = document.getElementById(`video-select-${i}`);
+        sel.innerHTML = '';
+        availableVideos.forEach(file => {
+          const opt = document.createElement('option');
+          opt.value = `videos/${file}`;
+          opt.textContent = file;
+          if (defaultMapping[i].includes(file)) {
+            opt.selected = true;
+          }
+          sel.appendChild(opt);
+        });
+      }
+    }
+
+    function changeVideo(index, src) {
+      videos[index].src = src;
+      seekTo(document.getElementById('timeline').value);
+    }
+
+    function applyFontPreset(fontFamily) {
+      document.getElementById('sel-title-font').value = fontFamily;
+      
+      // Update badge states
+      document.querySelectorAll('.font-badge').forEach(b => {
+        if (b.getAttribute('onclick').includes(fontFamily)) {
+          b.classList.add('active');
+        } else {
+          b.classList.remove('active');
+        }
+      });
+
+      updateUI();
+    }
+
+    function updateUI() {
+      const titleFont = document.getElementById('sel-title-font').value;
+      const nameFont = document.getElementById('sel-name-font').value;
+      const title = document.getElementById('inp-title').value;
+      const subtitle = document.getElementById('inp-subtitle').value;
+      const titleColor = document.getElementById('inp-title-color').value;
+      const titleStroke = document.getElementById('inp-title-stroke').value;
+      const titleSizeMul = parseFloat(document.getElementById('inp-title-size').value) || 1.0;
+      const titleStrokeW = parseInt(document.getElementById('inp-title-stroke-width').value, 10) || 8;
+
+      const nameColor = document.getElementById('inp-name-color').value;
+      const nameStroke = document.getElementById('inp-name-stroke').value;
+      const nameSizeMul = parseFloat(document.getElementById('inp-name-size').value) || 1.0;
+      const nameStrokeW = parseInt(document.getElementById('inp-name-stroke-width').value, 10) || 8;
+
+      const maxDuration = parseFloat(document.getElementById('inp-video-dur').value) || 7.0;
+
+      // Update Slider Value Displays
+      document.getElementById('val-title-size').textContent = `${titleSizeMul.toFixed(2)}x`;
+      document.getElementById('val-title-stroke').textContent = `${titleStrokeW}px`;
+      document.getElementById('val-name-size').textContent = `${nameSizeMul.toFixed(2)}x`;
+      document.getElementById('val-name-stroke').textContent = `${nameStrokeW}px`;
+
+      // Update Texts
+      document.getElementById('disp-title').textContent = title;
+      document.getElementById('disp-subtitle').textContent = subtitle;
+
+      // Update Title Container Font
+      document.getElementById('centerTitle').style.fontFamily = titleFont;
+
+      // Preview base sizes (for 360px wide preview)
+      const baseTitlePx = Math.round(28 * titleSizeMul);
+      const baseSubtitlePx = Math.round(32 * titleSizeMul);
+      const previewStrokeW = Math.max(2, Math.round(titleStrokeW * 0.5));
+
+      const titleStyle = `
+        color: ${titleColor};
+        font-size: ${baseTitlePx}px;
+        -webkit-text-stroke: ${previewStrokeW}px ${titleStroke};
+        text-shadow: 0 0 10px ${titleStroke}, 0 4px 8px rgba(0, 0, 0, 0.7);
+      `;
+      const subtitleStyle = `
+        color: ${titleColor};
+        font-size: ${baseSubtitlePx}px;
+        -webkit-text-stroke: ${previewStrokeW}px ${titleStroke};
+        text-shadow: 0 0 10px ${titleStroke}, 0 4px 8px rgba(0, 0, 0, 0.7);
+      `;
+
+      document.getElementById('disp-title').style.cssText = titleStyle;
+      document.getElementById('disp-subtitle').style.cssText = subtitleStyle;
+
+      // Update Names
+      const baseNamePx = Math.round(20 * nameSizeMul);
+      const previewNameStrokeW = Math.max(2, Math.round(nameStrokeW * 0.5));
+
+      for (let i = 0; i < 4; i++) {
+        const nameVal = document.getElementById(`name-${i}`).value;
+        const nameEl = document.getElementById(`disp-name-${i}`);
+        nameEl.textContent = nameVal;
+        nameEl.style.fontFamily = nameFont;
+        nameEl.style.fontSize = `${baseNamePx}px`;
+        nameEl.style.color = nameColor;
+        nameEl.style.webkitTextStroke = `${previewNameStrokeW}px ${nameStroke}`;
+        nameEl.style.textShadow = `0 0 6px ${nameStroke}, 0 3px 5px rgba(0,0,0,0.8)`;
+      }
+
+      // Update Audio Source
+      const audioIdx = parseInt(document.querySelector('input[name="audio-radio"]:checked').value, 10);
+      videos.forEach((v, i) => {
+        v.muted = i !== audioIdx;
+      });
+
+      // Update timeline max
+      document.getElementById('timeline').max = maxDuration;
+    }
+
+    function togglePlay() {
+      if (isPlaying) {
+        videos.forEach(v => v.pause());
+        document.getElementById('playBtn').textContent = '▶';
+        isPlaying = false;
+      } else {
+        const maxDuration = parseFloat(document.getElementById('inp-video-dur').value) || 7.0;
+        if (videos[0].currentTime >= maxDuration) {
+          seekTo(0);
+        }
+        videos.forEach((v, i) => {
+          const offset = parseFloat(document.getElementById(`offset-${i}`).value) || 0;
+          v.play().catch(e => console.log('play err:', e));
+        });
+        document.getElementById('playBtn').textContent = '⏸';
+        isPlaying = true;
+      }
+    }
+
+    function seekTo(time) {
+      const cur = parseFloat(time);
+      videos.forEach((v, i) => {
+        const offset = parseFloat(document.getElementById(`offset-${i}`).value) || 0;
+        v.currentTime = Math.max(0, cur + offset);
+      });
+      document.getElementById('timeline').value = cur;
+      updateTimeDisplay(cur);
+      checkTitleVisibility(cur);
+    }
+
+    function checkTitleVisibility(cur) {
+      const titleDur = parseFloat(document.getElementById('inp-title-dur').value) || 2.2;
+      const titleEl = document.getElementById('centerTitle');
+      const nameOverlays = document.querySelectorAll('.cell-name-overlay');
+
+      if (cur < titleDur) {
+        titleEl.style.opacity = '1';
+        titleEl.style.transform = 'translate(-50%, -50%) scale(1)';
+        nameOverlays.forEach(el => el.style.opacity = '0');
+      } else {
+        titleEl.style.opacity = '0';
+        titleEl.style.transform = 'translate(-50%, -50%) scale(0.9)';
+        nameOverlays.forEach(el => {
+          el.style.opacity = '1';
+        });
+      }
+    }
+
+    function setupTimeUpdate() {
+      setInterval(() => {
+        if (isPlaying) {
+          const cur = videos[0].currentTime;
+          const maxDuration = parseFloat(document.getElementById('inp-video-dur').value) || 7.0;
+          document.getElementById('timeline').value = cur;
+          updateTimeDisplay(cur);
+          checkTitleVisibility(cur);
+
+          if (cur >= maxDuration) {
+            togglePlay();
+            seekTo(0);
+          }
+        }
+      }, 50);
+    }
+
+    function updateTimeDisplay(cur) {
+      const max = parseFloat(document.getElementById('inp-video-dur').value) || 7.0;
+      document.getElementById('timeDisplay').textContent = `${cur.toFixed(1)}s / ${max.toFixed(1)}s`;
+    }
+
+    function getPropsJSON() {
+      const audioIdx = parseInt(document.querySelector('input[name="audio-radio"]:checked').value, 10);
+      return {
+        title: document.getElementById('inp-title').value,
+        subtitle: document.getElementById('inp-subtitle').value,
+        titleDuration: parseFloat(document.getElementById('inp-title-dur').value) || 1.5,
+        titleColor: document.getElementById('inp-title-color').value,
+        titleStrokeColor: document.getElementById('inp-title-stroke').value,
+        fontFamily: document.getElementById('sel-title-font').value,
+        titleFontSize: parseFloat(document.getElementById('inp-title-size').value) || 1.1,
+        titleStrokeWidth: parseInt(document.getElementById('inp-title-stroke-width').value, 10) || 11,
+        nameColor: document.getElementById('inp-name-color').value,
+        nameStrokeColor: document.getElementById('inp-name-stroke').value,
+        nameFontFamily: document.getElementById('sel-name-font').value,
+        nameFontSize: parseFloat(document.getElementById('inp-name-size').value) || 1.0,
+        nameStrokeWidth: parseInt(document.getElementById('inp-name-stroke-width').value, 10) || 8,
+        audioIndex: audioIdx,
+        durationInSeconds: parseFloat(document.getElementById('inp-video-dur').value) || 7.0,
+        items: [0, 1, 2, 3].map(i => ({
+          name: document.getElementById(`name-${i}`).value,
+          videoSrc: document.getElementById(`video-select-${i}`).value || defaultMapping[i],
+          startOffset: parseFloat(document.getElementById(`offset-${i}`).value) || 0,
+        })),
+      };
+    }
+
+    function exportJSON() {
+      const data = getPropsJSON();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `compare_config_${Date.now()}.json`;
+      a.click();
+    }
+
+    async function startRender() {
+      const modal = document.getElementById('renderModal');
+      const pBar = document.getElementById('progressBar');
+      const pText = document.getElementById('progressText');
+      const actions = document.getElementById('modalActions');
+      const title = document.getElementById('modalTitle');
+      const desc = document.getElementById('modalDesc');
+
+      modal.style.display = 'flex';
+      pBar.style.width = '0%';
+      pText.textContent = '準備中...';
+      actions.style.display = 'none';
+      title.textContent = 'Remotion レンダリング中...';
+      desc.textContent = 'Remotionで4動画を合成・エンコードしています';
+
+      const props = getPropsJSON();
+
+      try {
+        const res = await fetch('/api/render', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(props),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          alert('エラー: ' + data.error);
+          modal.style.display = 'none';
+          return;
+        }
+
+        // Poll status
+        const poll = setInterval(async () => {
+          const sRes = await fetch('/api/render-status');
+          const status = await sRes.json();
+
+          if (status.status === 'rendering') {
+            pBar.style.width = status.progress + '%';
+            pText.textContent = status.progress + '%';
+          } else if (status.status === 'done') {
+            clearInterval(poll);
+            pBar.style.width = '100%';
+            pText.textContent = '完了！ (100%)';
+            title.textContent = '動画の生成が完了しました！';
+            desc.textContent = '下のボタンからMP4をダウンロードできます。';
+            document.getElementById('downloadLink').href = status.outputFile;
+            actions.style.display = 'flex';
+          } else if (status.status === 'error') {
+            clearInterval(poll);
+            title.textContent = 'エラーが発生しました';
+            desc.textContent = status.error;
+            pText.textContent = 'FAILED';
+            actions.style.display = 'flex';
+          }
+        }, 800);
+      } catch (err) {
+        alert('通信エラー: ' + err.message);
+        modal.style.display = 'none';
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('renderModal').style.display = 'none';
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>

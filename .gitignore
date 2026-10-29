@@ -1,0 +1,8 @@
+node_modules/
+dist/
+out/
+_gdrive_download/
+_auto_props.json
+_temp_props.json
+*.log
+.DS_Store
