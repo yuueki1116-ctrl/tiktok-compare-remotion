@@ -348,6 +348,7 @@
     }
 
     .main-title-text {
+      white-space: nowrap;
       color: #ffffff;
       font-size: 28px;
       font-weight: 900;
@@ -358,6 +359,7 @@
     }
 
     .subtitle-text {
+      white-space: nowrap;
       color: #ffffff;
       font-size: 32px;
       font-weight: 900;
@@ -515,15 +517,15 @@
           <div class="form-group">
             <label>タイトル文字サイズ</label>
             <div class="slider-row">
-              <input type="range" id="inp-title-size" min="0.7" max="1.4" step="0.05" value="1.1" oninput="updateUI()">
-              <span class="slider-val" id="val-title-size">1.10x</span>
+              <input type="range" id="inp-title-size" min="0.7" max="1.4" step="0.05" value="0.95" oninput="updateUI()">
+              <span class="slider-val" id="val-title-size">0.95x</span>
             </div>
           </div>
           <div class="form-group">
             <label>タイトルフチ太さ</label>
             <div class="slider-row">
-              <input type="range" id="inp-title-stroke-width" min="3" max="16" step="1" value="11" oninput="updateUI()">
-              <span class="slider-val" id="val-title-stroke">11px</span>
+              <input type="range" id="inp-title-stroke-width" min="3" max="16" step="1" value="8" oninput="updateUI()">
+              <span class="slider-val" id="val-title-stroke">8px</span>
             </div>
           </div>
         </div>
@@ -983,8 +985,8 @@ ame-).value = cleaned;
         titleColor: document.getElementById('inp-title-color').value,
         titleStrokeColor: document.getElementById('inp-title-stroke').value,
         fontFamily: document.getElementById('sel-title-font').value,
-        titleFontSize: parseFloat(document.getElementById('inp-title-size').value) || 1.1,
-        titleStrokeWidth: parseInt(document.getElementById('inp-title-stroke-width').value, 10) || 11,
+        titleFontSize: parseFloat(document.getElementById('inp-title-size').value) || 0.95,
+        titleStrokeWidth: parseInt(document.getElementById('inp-title-stroke-width').value, 10) || 8,
         nameColor: document.getElementById('inp-name-color').value,
         nameStrokeColor: document.getElementById('inp-name-stroke').value,
         nameFontFamily: document.getElementById('sel-name-font').value,

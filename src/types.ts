@@ -1,13 +1,13 @@
 export interface VideoItemConfig {
   name: string;
-  videoSrc: string; // e.g. "videos/xxx.mp4" or "videos/xxx.jpg"
-  startOffset?: number; // seconds
+  videoSrc: string;
+  startOffset?: number;
 }
 
 export interface CompareVideoProps {
   title: string;
   subtitle: string;
-  titleDuration: number; // seconds to show title, or negative for entire video
+  titleDuration: number;
   titleColor: string;
   titleStrokeColor: string;
   fontFamily: string;
@@ -18,8 +18,8 @@ export interface CompareVideoProps {
   nameFontFamily: string;
   nameFontSize: number;
   nameStrokeWidth: number;
-  items: [VideoItemConfig, VideoItemConfig, VideoItemConfig, VideoItemConfig]; // [TL, TR, BL, BR]
-  audioIndex: number; // 0: TL, 1: TR, 2: BL, 3: BR
+  items: [VideoItemConfig, VideoItemConfig, VideoItemConfig, VideoItemConfig];
+  audioIndex: number;
   durationInSeconds: number;
 }
 
@@ -30,8 +30,8 @@ export const defaultProps: CompareVideoProps = {
   titleColor: '#ffffff',
   titleStrokeColor: '#ff2d78',
   fontFamily: "'Mochiy Pop One', sans-serif",
-  titleFontSize: 1.1,
-  titleStrokeWidth: 11,
+  titleFontSize: 0.95,
+  titleStrokeWidth: 8,
   nameColor: '#ffffff',
   nameStrokeColor: '#d6006e',
   nameFontFamily: "'M PLUS Rounded 1c', sans-serif",

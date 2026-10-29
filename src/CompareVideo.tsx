@@ -18,8 +18,8 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
   titleColor = '#ffffff',
   titleStrokeColor = '#ff2d78',
   fontFamily = "'Mochiy Pop One', sans-serif",
-  titleFontSize = 1.1,
-  titleStrokeWidth = 11,
+  titleFontSize = 1.0,
+  titleStrokeWidth = 8,
   nameColor = '#ffffff',
   nameStrokeColor = '#d6006e',
   nameFontFamily = "'M PLUS Rounded 1c', sans-serif",
@@ -63,10 +63,21 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
     WebkitTextStroke: `${strokeWidth}px ${strokeColor}`,
     paintOrder: 'stroke fill' as const,
     textShadow: `
-      0 0 12px ${strokeColor},
-      0 4px 10px rgba(0, 0, 0, 0.75)
+      0 0 10px ${strokeColor},
+      0 4px 8px rgba(0, 0, 0, 0.75)
     `,
   });
+
+  // Calculate dynamic font size based on text length to ensure 1 line per title
+  const calcTitleSize = (text: string, baseRatio: number) => {
+    const len = text ? text.length : 1;
+    // If length > 8, slightly scale down
+    const scaleFactor = len > 8 ? Math.max(0.65, 8 / len) : 1.0;
+    return Math.round(width * baseRatio * (titleFontSize || 1.0) * scaleFactor);
+  };
+
+  const titleSizePx = calcTitleSize(title, 0.076);
+  const subtitleSizePx = calcTitleSize(subtitle, 0.082);
 
   return (
     <AbsoluteFill
@@ -79,7 +90,7 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
         @import url('https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DotGothic16&family=Hachi+Maru+Pop&family=Kaisei+Tokumin:wght@700;800&family=Kiwi+Maru:wght@500;800&family=M+PLUS+Rounded+1c:wght@800;900&family=Mochiy+Pop+One&family=Noto+Sans+JP:wght@800;900&family=Potta+One&family=Reggae+One&family=RocknRoll+One&family=Zen+Maru+Gothic:wght@700;900&display=swap');
       `}</style>
 
-      {/* 2x2 Grid */}
+      {/* 2x2 Video Grid */}
       <div
         style={{
           display: 'grid',
@@ -150,9 +161,10 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
                     style={{
                       display: 'inline-block',
                       color: nameColor,
-                      fontSize: `${Math.round(width * 0.058 * (nameFontSize || 1.0))}px`,
+                      fontSize: `${Math.round(width * 0.056 * (nameFontSize || 1.0))}px`,
                       fontWeight: 900,
                       letterSpacing: '1px',
+                      whiteSpace: 'nowrap',
                       ...createStrokeStyle(nameStrokeColor, nameStrokeWidth || 8),
                       transform: 'scale(1, 1.05)',
                     }}
@@ -166,7 +178,7 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
         })}
       </div>
 
-      {/* Center Hook Title Overlay */}
+      {/* Center Hook Title Overlay (Always exactly 2 lines without breaking) */}
       {showTitle && (
         <div
           style={{
@@ -176,13 +188,13 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
             transform: `translate(-50%, -50%) scale(${titleSpring})`,
             opacity: titleOpacity,
             textAlign: 'center',
-            width: '92%',
+            width: '96%',
             pointerEvents: 'none',
             zIndex: 100,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             fontFamily: fontFamily,
           }}
         >
@@ -190,10 +202,11 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
             <div
               style={{
                 color: titleColor,
-                fontSize: `${Math.round(width * 0.088 * (titleFontSize || 1.1))}px`,
+                fontSize: `${titleSizePx}px`,
                 fontWeight: 900,
-                letterSpacing: '2px',
-                ...createStrokeStyle(titleStrokeColor, titleStrokeWidth || 11),
+                letterSpacing: '1.5px',
+                whiteSpace: 'nowrap',
+                ...createStrokeStyle(titleStrokeColor, titleStrokeWidth || 8),
                 transform: 'scale(1, 1.05)',
               }}
             >
@@ -204,10 +217,11 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
             <div
               style={{
                 color: titleColor,
-                fontSize: `${Math.round(width * 0.098 * (titleFontSize || 1.1))}px`,
+                fontSize: `${subtitleSizePx}px`,
                 fontWeight: 900,
-                letterSpacing: '2px',
-                ...createStrokeStyle(titleStrokeColor, (titleStrokeWidth || 11) + 1),
+                letterSpacing: '1.5px',
+                whiteSpace: 'nowrap',
+                ...createStrokeStyle(titleStrokeColor, (titleStrokeWidth || 8) + 1),
                 transform: 'scale(1, 1.05)',
               }}
             >
