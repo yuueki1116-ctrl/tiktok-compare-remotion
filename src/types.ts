@@ -18,7 +18,8 @@ export interface CompareVideoProps {
   nameFontFamily: string;
   nameFontSize: number;
   nameStrokeWidth: number;
-  items: [VideoItemConfig, VideoItemConfig, VideoItemConfig, VideoItemConfig];
+  items: VideoItemConfig[]; // 2 items (left/right) or 4 items (2x2 grid)
+  layout?: '4-grid' | '2-split';
   audioIndex: number;
   durationInSeconds: number;
 }
@@ -37,6 +38,7 @@ export const defaultProps: CompareVideoProps = {
   nameFontFamily: "'M PLUS Rounded 1c', sans-serif",
   nameFontSize: 1.0,
   nameStrokeWidth: 8,
+  layout: '4-grid',
   items: [
     {
       name: 'みおち',

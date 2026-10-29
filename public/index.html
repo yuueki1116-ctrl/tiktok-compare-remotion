@@ -154,6 +154,34 @@
       font-weight: 700;
     }
 
+    /* Layout Mode Buttons */
+    .btn-layout {
+      flex: 1;
+      padding: 10px 14px;
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-layout:hover {
+      border-color: var(--secondary);
+      color: #fff;
+    }
+    .btn-layout.active {
+      background: linear-gradient(135deg, rgba(255, 0, 80, 0.25), rgba(0, 242, 254, 0.25));
+      border-color: var(--primary);
+      color: #fff;
+      box-shadow: 0 0 10px rgba(255, 0, 80, 0.3);
+    }
+
     .grid-2x2-config {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -468,6 +496,19 @@
   <div class="main-container">
     <!-- Left: Controls -->
     <div class="controls-panel">
+      <!-- Layout Mode -->
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px;">
+        <label style="font-size: 0.85rem; font-weight: 700; color: var(--secondary); display: block; margin-bottom: 8px;">📐 分割レイアウト設定</label>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-layout active" id="layout-4-btn" onclick="setLayout('4-grid')">
+            ⊞ 4分割 (2×2)
+          </button>
+          <button type="button" class="btn-layout" id="layout-2-btn" onclick="setLayout('2-split')">
+            ▯▯ 縦2分割 (1:左 / 2:右)
+          </button>
+        </div>
+      </div>
+
       <!-- Titles & Typography -->
       <div>
         <div class="section-title">メインタイトル & フォント設定</div>
@@ -601,11 +642,11 @@
           </div>
         </div>
 
-        <div class="grid-2x2-config">
-          <!-- Top Left -->
-          <div class="quadrant-card">
+        <div class="grid-2x2-config" id="config-grid">
+          <!-- Top Left / Left -->
+          <div class="quadrant-card" id="card-0">
             <div class="quadrant-label">
-              <span>↖ 左上 (Top-Left)</span>
+              <span id="label-pos-0">↖ 左上 (1)</span>
               <label style="font-size: 0.7rem; display: flex; align-items: center; gap: 3px; cursor: pointer;">
                 <input type="radio" name="audio-radio" value="0" checked onchange="updateUI()"> 音声
               </label>
@@ -624,10 +665,10 @@
             </div>
           </div>
 
-          <!-- Top Right -->
-          <div class="quadrant-card">
+          <!-- Top Right / Right -->
+          <div class="quadrant-card" id="card-1">
             <div class="quadrant-label">
-              <span>↗ 右上 (Top-Right)</span>
+              <span id="label-pos-1">↗ 右上 (2)</span>
               <label style="font-size: 0.7rem; display: flex; align-items: center; gap: 3px; cursor: pointer;">
                 <input type="radio" name="audio-radio" value="1" onchange="updateUI()"> 音声
               </label>
@@ -647,9 +688,9 @@
           </div>
 
           <!-- Bottom Left -->
-          <div class="quadrant-card">
+          <div class="quadrant-card" id="card-2">
             <div class="quadrant-label">
-              <span>↙ 左下 (Bottom-Left)</span>
+              <span id="label-pos-2">↙ 左下 (3)</span>
               <label style="font-size: 0.7rem; display: flex; align-items: center; gap: 3px; cursor: pointer;">
                 <input type="radio" name="audio-radio" value="2" onchange="updateUI()"> 音声
               </label>
@@ -669,9 +710,9 @@
           </div>
 
           <!-- Bottom Right -->
-          <div class="quadrant-card">
+          <div class="quadrant-card" id="card-3">
             <div class="quadrant-label">
-              <span>↘ 右下 (Bottom-Right)</span>
+              <span id="label-pos-3">↘ 右下 (4)</span>
               <label style="font-size: 0.7rem; display: flex; align-items: center; gap: 3px; cursor: pointer;">
                 <input type="radio" name="audio-radio" value="3" onchange="updateUI()"> 音声
               </label>
@@ -697,22 +738,22 @@
     <div class="preview-panel">
       <!-- 9:16 Phone Canvas -->
       <div class="phone-container" id="phoneContainer">
-        <div class="phone-grid">
-          <div class="phone-cell">
+        <div class="phone-grid" id="previewGrid">
+          <div class="phone-cell" id="cell-0">
             <video id="v-0" playsinline muted preload="auto"></video>
-            <div class="cell-name-overlay"><span class="cell-name-text" id="disp-name-0">みおち</span></div>
+            <div class="cell-name-overlay" id="overlay-0"><span class="cell-name-text" id="disp-name-0">みおち</span></div>
           </div>
-          <div class="phone-cell">
+          <div class="phone-cell" id="cell-1">
             <video id="v-1" playsinline muted preload="auto"></video>
-            <div class="cell-name-overlay"><span class="cell-name-text" id="disp-name-1">みなみ</span></div>
+            <div class="cell-name-overlay" id="overlay-1"><span class="cell-name-text" id="disp-name-1">みなみ</span></div>
           </div>
-          <div class="phone-cell">
+          <div class="phone-cell" id="cell-2">
             <video id="v-2" playsinline muted preload="auto"></video>
-            <div class="cell-name-overlay"><span class="cell-name-text" id="disp-name-2">金丸紗希</span></div>
+            <div class="cell-name-overlay" id="overlay-2"><span class="cell-name-text" id="disp-name-2">金丸紗希</span></div>
           </div>
-          <div class="phone-cell">
+          <div class="phone-cell" id="cell-3">
             <video id="v-3" playsinline muted preload="auto"></video>
-            <div class="cell-name-overlay"><span class="cell-name-text" id="disp-name-3">もえ</span></div>
+            <div class="cell-name-overlay" id="overlay-3"><span class="cell-name-text" id="disp-name-3">もえ</span></div>
           </div>
         </div>
 
@@ -756,8 +797,53 @@
       document.getElementById('v-3'),
     ];
 
+    let currentLayout = '4-grid';
     let isPlaying = false;
     let availableVideos = [];
+
+    function setLayout(layout) {
+      currentLayout = layout;
+      const btn4 = document.getElementById('layout-4-btn');
+      const btn2 = document.getElementById('layout-2-btn');
+      const pGrid = document.getElementById('previewGrid');
+      const card2 = document.getElementById('card-2');
+      const card3 = document.getElementById('card-3');
+      const cell2 = document.getElementById('cell-2');
+      const cell3 = document.getElementById('cell-3');
+      const lbl0 = document.getElementById('label-pos-0');
+      const lbl1 = document.getElementById('label-pos-1');
+      const overlay0 = document.getElementById('overlay-0');
+      const overlay1 = document.getElementById('overlay-1');
+
+      if (layout === '2-split') {
+        btn2.classList.add('active');
+        btn4.classList.remove('active');
+        pGrid.style.gridTemplateRows = '1fr';
+        pGrid.style.gap = '3px';
+        cell2.style.display = 'none';
+        cell3.style.display = 'none';
+        card2.style.display = 'none';
+        card3.style.display = 'none';
+        lbl0.textContent = '◀ 左 (1: Left)';
+        lbl1.textContent = '▶ 右 (2: Right)';
+        overlay0.style.bottom = '50px';
+        overlay1.style.bottom = '50px';
+      } else {
+        btn4.classList.add('active');
+        btn2.classList.remove('active');
+        pGrid.style.gridTemplateRows = '1fr 1fr';
+        pGrid.style.gap = '2px';
+        cell2.style.display = 'block';
+        cell3.style.display = 'block';
+        card2.style.display = 'block';
+        card3.style.display = 'block';
+        lbl0.textContent = '↖ 左上 (1)';
+        lbl1.textContent = '↗ 右上 (2)';
+        overlay0.style.bottom = '16px';
+        overlay1.style.bottom = '16px';
+      }
+      updateUI();
+    }
 
     const defaultMapping = [
       'videos/v1c044g50000dbbl47nog65kps1bcong.mp4', // みおち
@@ -993,8 +1079,9 @@ ame-).value = cleaned;
         nameFontSize: parseFloat(document.getElementById('inp-name-size').value) || 1.0,
         nameStrokeWidth: parseInt(document.getElementById('inp-name-stroke-width').value, 10) || 8,
         audioIndex: audioIdx,
+        layout: currentLayout,
         durationInSeconds: parseFloat(document.getElementById('inp-video-dur').value) || 7.0,
-        items: [0, 1, 2, 3].map(i => ({
+        items: (currentLayout === '2-split' ? [0, 1] : [0, 1, 2, 3]).map(i => ({
           name: document.getElementById(`name-${i}`).value,
           videoSrc: document.getElementById(`video-select-${i}`).value || defaultMapping[i],
           startOffset: parseFloat(document.getElementById(`offset-${i}`).value) || 0,

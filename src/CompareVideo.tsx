@@ -18,7 +18,7 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
   titleColor = '#ffffff',
   titleStrokeColor = '#ff2d78',
   fontFamily = "'Mochiy Pop One', sans-serif",
-  titleFontSize = 1.0,
+  titleFontSize = 0.95,
   titleStrokeWidth = 8,
   nameColor = '#ffffff',
   nameStrokeColor = '#d6006e',
@@ -26,10 +26,14 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
   nameFontSize = 1.0,
   nameStrokeWidth = 8,
   items,
-  audioIndex,
+  layout,
+  audioIndex = 0,
 }) => {
   const frame = useCurrentFrame();
-  const { fps, width } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
+
+  // Determine layout: 2-split (left/right) if items count is 2 or layout is '2-split'
+  const is2Split = layout === '2-split' || items.length === 2;
 
   // Title animation: popup at start, fade out at end
   const titleDurationFrames = titleDuration > 0 ? titleDuration * fps : Infinity;
@@ -71,7 +75,6 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
   // Calculate dynamic font size based on text length to ensure 1 line per title
   const calcTitleSize = (text: string, baseRatio: number) => {
     const len = text ? text.length : 1;
-    // If length > 8, slightly scale down
     const scaleFactor = len > 8 ? Math.max(0.65, 8 / len) : 1.0;
     return Math.round(width * baseRatio * (titleFontSize || 1.0) * scaleFactor);
   };
@@ -90,19 +93,19 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
         @import url('https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DotGothic16&family=Hachi+Maru+Pop&family=Kaisei+Tokumin:wght@700;800&family=Kiwi+Maru:wght@500;800&family=M+PLUS+Rounded+1c:wght@800;900&family=Mochiy+Pop+One&family=Noto+Sans+JP:wght@800;900&family=Potta+One&family=Reggae+One&family=RocknRoll+One&family=Zen+Maru+Gothic:wght@700;900&display=swap');
       `}</style>
 
-      {/* 2x2 Video Grid */}
+      {/* Grid: 2 columns (1 row for 2-split, 2 rows for 4-grid) */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gridTemplateRows: '1fr 1fr',
+          gridTemplateRows: is2Split ? '1fr' : '1fr 1fr',
           width: '100%',
           height: '100%',
-          gap: '2px',
+          gap: '3px',
           backgroundColor: '#000000',
         }}
       >
-        {items.map((item: VideoItemConfig, idx: number) => {
+        {items.slice(0, is2Split ? 2 : 4).map((item: VideoItemConfig, idx: number) => {
           const isAudioSource = idx === audioIndex;
           const startFrom = Math.round((item.startOffset || 0) * fps);
           const isImage = item.videoSrc.match(/\.(jpg|jpeg|png|webp)$/i);
@@ -146,7 +149,7 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
                 <div
                   style={{
                     position: 'absolute',
-                    bottom: '24px',
+                    bottom: is2Split ? '60px' : '24px',
                     left: 0,
                     right: 0,
                     textAlign: 'center',
@@ -178,7 +181,7 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
         })}
       </div>
 
-      {/* Center Hook Title Overlay (Always exactly 2 lines without breaking) */}
+      {/* Center Hook Title Overlay (Clean 2 lines) */}
       {showTitle && (
         <div
           style={{

@@ -25,7 +25,6 @@ def load_config():
     return config
 
 def download_from_gdrive(folder_url, dest_dir):
-    """Download Google Drive folder contents including subfolders"""
     print(f"[Automation] Checking Google Drive: {folder_url}")
     os.makedirs(dest_dir, exist_ok=True)
     try:
@@ -53,7 +52,7 @@ def parse_folder_titles(folder_name):
 
     parts = [p.strip() for p in re.split(r'[_\s]+', folder_name) if p.strip()]
 
-    # If first part looks like a date (e.g. 20261029, 1029, 2026-10-29), remove it from title parts
+    # If first part looks like a date, remove it from title
     if parts and re.match(r'^(20\d\d[-_]?)?\d{2}[-_]?\d{2}$', parts[0]):
         parts = parts[1:]
 
@@ -65,10 +64,6 @@ def parse_folder_titles(folder_name):
         return default_title, default_subtitle
 
 def find_all_target_folders_and_files(base_dir):
-    """
-    Find ALL folders matching today's date (or all subfolders if multiple)
-    Returns a list of tuples: [(folder_name, [files]), ...]
-    """
     now = datetime.date.today()
     date_patterns = [
         now.strftime("%Y-%m-%d"),
@@ -88,7 +83,7 @@ def find_all_target_folders_and_files(base_dir):
             if os.path.isdir(p):
                 all_subdirs.append((item, p))
 
-    # 1. Collect all matching today's date
+    # 1. Matching today's date
     for name, p in all_subdirs:
         for pat in date_patterns:
             if pat in name:
@@ -101,7 +96,7 @@ def find_all_target_folders_and_files(base_dir):
         matched_folders.sort(key=lambda x: x[0])
         return matched_folders
 
-    # 2. If no today's folder, use latest subfolders
+    # 2. Latest subfolders fallback
     if all_subdirs:
         all_subdirs.sort(key=lambda x: x[0], reverse=True)
         for name, p in all_subdirs:
@@ -111,12 +106,12 @@ def find_all_target_folders_and_files(base_dir):
         if matched_folders:
             return matched_folders
 
-    # 3. Fallback: check base_dir itself
+    # 3. Base directory fallback
     root_media = get_media_in_dir(base_dir)
     if root_media:
         return [("root", root_media)]
 
-    # 4. Fallback to public/videos
+    # 4. Default public/videos fallback
     fallback_dir = os.path.join(PROJECT_DIR, "public", "videos")
     return [("default", get_media_in_dir(fallback_dir))]
 
@@ -125,14 +120,15 @@ def clean_person_name(filename, default_name):
     cleaned = re.sub(r'^[0-9]+[_\-\.\s]*', '', raw).strip()
     return cleaned if cleaned else default_name
 
-def render_single_video(config, media_group, output_path, title, subtitle, render_id=1):
+def render_single_video(config, media_group, output_path, title, subtitle, render_id=1, layout='4-grid'):
     public_videos_dir = os.path.join(PROJECT_DIR, "public", "videos")
     os.makedirs(public_videos_dir, exist_ok=True)
 
     items = []
     default_names = config.get("default_names", ["みおち", "みなみ", "金丸紗希", "もえ"])
+    target_count = 2 if layout == '2-split' else 4
 
-    for i in range(4):
+    for i in range(target_count):
         src_file = media_group[i] if i < len(media_group) else media_group[0]
         filename = os.path.basename(src_file)
         ext = os.path.splitext(filename)[1].lower()
@@ -150,7 +146,7 @@ def render_single_video(config, media_group, output_path, title, subtitle, rende
             "startOffset": 0
         })
 
-    # Fixed USER STYLES (Clean 2 lines guaranteed)
+    # Fixed USER STYLES
     props = {
         "title": title,
         "subtitle": subtitle,
@@ -166,6 +162,7 @@ def render_single_video(config, media_group, output_path, title, subtitle, rende
         "nameFontSize": 1.0,
         "nameStrokeWidth": 8,
         "audioIndex": 0,
+        "layout": layout,
         "durationInSeconds": float(config.get("duration_seconds", 7.0)),
         "items": items
     }
@@ -174,7 +171,7 @@ def render_single_video(config, media_group, output_path, title, subtitle, rende
     with open(temp_props_path, "w", encoding="utf-8") as f:
         json.dump(props, f, ensure_ascii=False, indent=2)
 
-    print(f"[Automation] Rendering: '{title}' / '{subtitle}'")
+    print(f"[Automation] Rendering ({layout}): '{title}' / '{subtitle}'")
     print(f"[Automation] Members: {[it['name'] for it in items]}")
     
     env = os.environ.copy()
@@ -228,7 +225,7 @@ def send_to_discord(webhook_url, video_path, message_text):
 
 def main():
     print("=" * 60)
-    print(" TikTok Compare Video Daily Automation (Multi-Folder & Multi-Video)")
+    print(" TikTok Compare Video Daily Automation (Auto 2-Split / 4-Grid)")
     print(f" Execution Time: {datetime.datetime.now()}")
     print("=" * 60)
 
@@ -264,25 +261,38 @@ def main():
 
         base_title, base_subtitle = parse_folder_titles(folder_name)
         
-        # Chunk into groups of 4
-        chunk_size = 4
+        # Determine whether this folder should be 2-split or 4-grid:
+        # If exactly 2 files OR folder name contains '2分割' / '2選' / 'vs'
+        if len(media_files) == 2 or ("2分割" in folder_name or "2選" in folder_name or "vs" in folder_name.lower()):
+            chunk_size = 2
+            layout = '2-split'
+            print(f"[Automation] Mode: 2-Split (Left vs Right)")
+        else:
+            chunk_size = 4
+            layout = '4-grid'
+            print(f"[Automation] Mode: 4-Grid (2x2 Quad)")
+
         chunks = [media_files[i:i + chunk_size] for i in range(0, len(media_files), chunk_size)]
 
         for c_idx, chunk in enumerate(chunks, 1):
             global_video_count += 1
-            while len(chunk) < 4:
+            while len(chunk) < chunk_size:
                 chunk.append(chunk[0])
 
             current_subtitle = f"{base_subtitle} #{c_idx}" if len(chunks) > 1 else base_subtitle
-            safe_folder_name = re.sub(r'[^a-zA-Z0-9_-]', '_', folder_name)[:20]
-            out_video_name = f"compare_{today_str}_folder{f_idx}_part{c_idx}.mp4"
+            out_video_name = f"compare_{today_str}_f{f_idx}_p{c_idx}_{layout}.mp4"
             out_video_path = os.path.join(out_dir, out_video_name)
 
             # Render
-            render_single_video(config, chunk, out_video_path, title=base_title, subtitle=current_subtitle, render_id=global_video_count)
+            render_single_video(
+                config, chunk, out_video_path,
+                title=base_title, subtitle=current_subtitle,
+                render_id=global_video_count, layout=layout
+            )
 
             # Deliver to Discord
-            msg = f"🌅 **【朝の自動納品】{base_title} - {current_subtitle}**\n（日付: {today_jp} / フォルダ: `{folder_name}` / 計{len(chunk)}素材）"
+            layout_label = "縦2分割" if layout == '2-split' else "4分割"
+            msg = f"🌅 **【朝の自動納品】{base_title} - {current_subtitle}** ({layout_label})\n（日付: {today_jp} / フォルダ: `{folder_name}` / 計{len(chunk)}素材）"
             send_to_discord(webhook_url, out_video_path, msg)
 
     print("=" * 60)
