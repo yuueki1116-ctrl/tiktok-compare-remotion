@@ -802,6 +802,14 @@
 
     function changeVideo(index, src) {
       videos[index].src = src;
+      // Auto extract person name from filename if user hasn't typed custom name
+      const filename = src.split('/').pop().replace(/\.[^/.]+$/, '');
+      const cleaned = filename.replace(/^[0-9]+[_-]/, '').trim();
+      if (cleaned && !cleaned.startsWith('v14') && !cleaned.startsWith('v1c')) {
+        document.getElementById(
+ame-).value = cleaned;
+      }
+      updateUI();
       seekTo(document.getElementById('timeline').value);
     }
 
