@@ -2,7 +2,8 @@ import React from 'react';
 import {
   AbsoluteFill,
   Img,
-  Video,
+  OffthreadVideo,
+  Audio,
   interpolate,
   spring,
   staticFile,
@@ -34,43 +35,41 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
 
   // Determine layout: 2-split (left/right) if items count is 2 or layout is '2-split'
   const is2Split = layout === '2-split' || items.length === 2;
+  const activeItems = items.slice(0, is2Split ? 2 : 4);
+
+  // Safe audio item
+  const validAudioIdx = (audioIndex >= 0 && audioIndex < activeItems.length) ? audioIndex : 0;
+  const audioItem = activeItems[validAudioIdx];
+  const audioStartFrom = Math.round((audioItem?.startOffset || 0) * fps);
+  const isAudioItemVideo = audioItem && !audioItem.videoSrc.match(/\.(jpg|jpeg|png|webp)$/i);
 
   // Title animation: popup at start, fade out at end
   const titleDurationFrames = titleDuration > 0 ? titleDuration * fps : Infinity;
-  const titleSpring = spring({
-    frame,
-    fps,
-    config: { damping: 12, stiffness: 200, mass: 0.8 },
-  });
-
-  const fadeOutStart = Math.max(0, titleDurationFrames - 10);
-  const titleOpacity = interpolate(
-    frame,
-    [0, 8, fadeOutStart, titleDurationFrames],
-    [0, 1, 1, 0],
-    { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
-  );
   const showTitle = frame < titleDurationFrames;
 
-  // Names animation: appear right as title finishes fading out
-  const namesFadeInStart = titleDuration > 0 ? fadeOutStart : 0;
+  // Popup spring (0 to 1 scale)
+  const popupScale = spring({
+    frame,
+    fps,
+    config: { damping: 12, mass: 0.5, stiffness: 200 },
+  });
+
+  // Fade out during last 8 frames of title display
+  const titleOpacity = interpolate(
+    frame,
+    [titleDurationFrames - 8, titleDurationFrames],
+    [1, 0],
+    { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
+  );
+
+  // Names fade in right after title disappears
   const namesOpacity = interpolate(
     frame,
-    [namesFadeInStart, namesFadeInStart + 12],
+    [titleDurationFrames, titleDurationFrames + 8],
     [0, 1],
     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
   );
-  const showNames = frame >= namesFadeInStart;
-
-  // Stroke and shadow style generator
-  const createStrokeStyle = (strokeColor: string, strokeWidth: number) => ({
-    WebkitTextStroke: `${strokeWidth}px ${strokeColor}`,
-    paintOrder: 'stroke fill' as const,
-    textShadow: `
-      0 0 10px ${strokeColor},
-      0 4px 8px rgba(0, 0, 0, 0.75)
-    `,
-  });
+  const showNames = frame >= titleDurationFrames;
 
   // Calculate dynamic font size based on text length to ensure 1 line per title
   const calcTitleSize = (text: string, baseRatio: number) => {
@@ -79,16 +78,15 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
     return Math.round(width * baseRatio * (titleFontSize || 1.0) * scaleFactor);
   };
 
-  const titleSizePx = calcTitleSize(title, 0.076);
-  const subtitleSizePx = calcTitleSize(subtitle, 0.082);
+  const titlePx = calcTitleSize(title, 0.075);
+  const subtitlePx = calcTitleSize(subtitle, 0.088);
+  const titleStrokePx = Math.round(titleStrokeWidth || 8);
+  const namePx = Math.round(width * 0.052 * (nameFontSize || 1.0));
+  const nameStrokePx = Math.round(nameStrokeWidth || 8);
 
   return (
-    <AbsoluteFill
-      style={{
-        backgroundColor: '#000000',
-      }}
-    >
-      {/* Import Popular TikTok & Shorts Fonts */}
+    <AbsoluteFill style={{ backgroundColor: '#000000' }}>
+      {/* Google Fonts */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DotGothic16&family=Hachi+Maru+Pop&family=Kaisei+Tokumin:wght@700;800&family=Kiwi+Maru:wght@500;800&family=M+PLUS+Rounded+1c:wght@800;900&family=Mochiy+Pop+One&family=Noto+Sans+JP:wght@800;900&family=Potta+One&family=Reggae+One&family=RocknRoll+One&family=Zen+Maru+Gothic:wght@700;900&display=swap');
       `}</style>
@@ -105,8 +103,7 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
           backgroundColor: '#000000',
         }}
       >
-        {items.slice(0, is2Split ? 2 : 4).map((item: VideoItemConfig, idx: number) => {
-          const isAudioSource = idx === audioIndex;
+        {activeItems.map((item: VideoItemConfig, idx: number) => {
           const startFrom = Math.round((item.startOffset || 0) * fps);
           const isImage = item.videoSrc.match(/\.(jpg|jpeg|png|webp)$/i);
 
@@ -121,7 +118,7 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
                 backgroundColor: '#111111',
               }}
             >
-              {/* Media Element (Image or Video) */}
+              {/* Media Element (Image or Video) - Video volume is muted here */}
               {isImage ? (
                 <Img
                   src={staticFile(item.videoSrc)}
@@ -132,10 +129,10 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
                   }}
                 />
               ) : (
-                <Video
+                <OffthreadVideo
                   src={staticFile(item.videoSrc)}
                   startFrom={startFrom}
-                  volume={isAudioSource ? 1 : 0}
+                  volume={0}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -164,12 +161,12 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
                     style={{
                       display: 'inline-block',
                       color: nameColor,
-                      fontSize: `${Math.round(width * 0.056 * (nameFontSize || 1.0))}px`,
+                      fontSize: `${namePx}px`,
                       fontWeight: 900,
                       letterSpacing: '1px',
-                      whiteSpace: 'nowrap',
-                      ...createStrokeStyle(nameStrokeColor, nameStrokeWidth || 8),
-                      transform: 'scale(1, 1.05)',
+                      WebkitTextStroke: `${nameStrokePx}px ${nameStrokeColor}`,
+                      paintOrder: 'stroke fill',
+                      textShadow: `0 0 10px ${nameStrokeColor}, 0 4px 8px rgba(0, 0, 0, 0.8)`,
                     }}
                   >
                     {item.name}
@@ -181,6 +178,15 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
         })}
       </div>
 
+      {/* Explicit Audio Track from the selected audio source */}
+      {isAudioItemVideo && (
+        <Audio
+          src={staticFile(audioItem.videoSrc)}
+          startFrom={audioStartFrom}
+          volume={1}
+        />
+      )}
+
       {/* Center Hook Title Overlay (Clean 2 lines) */}
       {showTitle && (
         <div
@@ -188,29 +194,31 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
             position: 'absolute',
             top: '50%',
             left: '50%',
-            transform: `translate(-50%, -50%) scale(${titleSpring})`,
+            transform: `translate(-50%, -50%) scale(${popupScale})`,
             opacity: titleOpacity,
-            textAlign: 'center',
-            width: '96%',
-            pointerEvents: 'none',
             zIndex: 100,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '6px',
-            fontFamily: fontFamily,
+            justifyContent: 'center',
+            textAlign: 'center',
+            fontFamily,
+            pointerEvents: 'none',
+            width: '90%',
           }}
         >
           {title && (
             <div
               style={{
                 color: titleColor,
-                fontSize: `${titleSizePx}px`,
+                fontSize: `${titlePx}px`,
                 fontWeight: 900,
-                letterSpacing: '1.5px',
+                letterSpacing: '1px',
+                WebkitTextStroke: `${titleStrokePx}px ${titleStrokeColor}`,
+                paintOrder: 'stroke fill',
+                textShadow: `0 0 14px ${titleStrokeColor}, 0 6px 12px rgba(0, 0, 0, 0.7)`,
+                lineHeight: 1.25,
                 whiteSpace: 'nowrap',
-                ...createStrokeStyle(titleStrokeColor, titleStrokeWidth || 8),
-                transform: 'scale(1, 1.05)',
               }}
             >
               {title}
@@ -220,12 +228,15 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
             <div
               style={{
                 color: titleColor,
-                fontSize: `${subtitleSizePx}px`,
+                fontSize: `${subtitlePx}px`,
                 fontWeight: 900,
-                letterSpacing: '1.5px',
+                letterSpacing: '1px',
+                WebkitTextStroke: `${titleStrokePx}px ${titleStrokeColor}`,
+                paintOrder: 'stroke fill',
+                textShadow: `0 0 14px ${titleStrokeColor}, 0 6px 12px rgba(0, 0, 0, 0.7)`,
+                lineHeight: 1.25,
+                marginTop: '4px',
                 whiteSpace: 'nowrap',
-                ...createStrokeStyle(titleStrokeColor, (titleStrokeWidth || 8) + 1),
-                transform: 'scale(1, 1.05)',
               }}
             >
               {subtitle}

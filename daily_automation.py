@@ -12,6 +12,11 @@ import gdown
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(PROJECT_DIR, "automation_config.json")
 
+def get_jst_today():
+    """Return today's date in Japan Standard Time (JST = UTC+9)"""
+    jst = datetime.timezone(datetime.timedelta(hours=9))
+    return datetime.datetime.now(jst).date()
+
 def load_config():
     config = {}
     if os.path.exists(CONFIG_PATH):
@@ -46,7 +51,7 @@ def get_media_in_dir(directory):
     return files
 
 def parse_folder_titles(folder_name):
-    today_str = datetime.date.today().strftime("%Y年%m月%d日")
+    today_str = get_jst_today().strftime("%Y年%m月%d日")
     default_title = "誰が1番好き？"
     default_subtitle = f"{today_str} 比較動画"
 
@@ -64,7 +69,7 @@ def parse_folder_titles(folder_name):
         return default_title, default_subtitle
 
 def find_all_target_folders_and_files(base_dir):
-    now = datetime.date.today()
+    now = get_jst_today()
     date_patterns = [
         now.strftime("%Y-%m-%d"),
         now.strftime("%Y%m%d"),
@@ -120,6 +125,60 @@ def clean_person_name(filename, default_name):
     cleaned = re.sub(r'^[0-9]+[_\-\.\s]*', '', raw).strip()
     return cleaned if cleaned else default_name
 
+def find_ffprobe():
+    # 1. System ffprobe
+    import shutil
+    p = shutil.which("ffprobe")
+    if p:
+        return p
+    # 2. Remotion bundled ffprobe
+    candidates = glob.glob(os.path.join(PROJECT_DIR, "node_modules", "@remotion", "*", "ffprobe*"))
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return None
+
+def get_audio_bitrate(ffprobe_bin, file_path):
+    if not ffprobe_bin or not os.path.exists(file_path):
+        return 0
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext in ('.jpg', '.jpeg', '.png', '.webp'):
+        return 0
+    try:
+        cmd = [
+            ffprobe_bin,
+            "-v", "error",
+            "-select_streams", "a:0",
+            "-show_entries", "stream=bit_rate",
+            "-of", "json",
+            file_path
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        data = json.loads(res.stdout)
+        streams = data.get("streams", [])
+        if streams and "bit_rate" in streams[0]:
+            return int(streams[0]["bit_rate"])
+    except Exception:
+        pass
+    return 0
+
+def detect_best_audio_index(media_group):
+    """Detect which video has the real sound track (bitrate >= 16kbps)"""
+    ffprobe_bin = find_ffprobe()
+    best_idx = 0
+    max_bitrate = 0
+
+    for idx, p in enumerate(media_group):
+        br = get_audio_bitrate(ffprobe_bin, p)
+        filename = os.path.basename(p)
+        print(f"[AudioCheck] [{idx}] '{filename}' -> bitrate: {br} bps")
+        if br > max_bitrate and br >= 16000:
+            max_bitrate = br
+            best_idx = idx
+
+    print(f"[AudioCheck] => Selected audio index: {best_idx} (bitrate: {max_bitrate} bps)")
+    return best_idx
+
 def render_single_video(config, media_group, output_path, title, subtitle, render_id=1, layout='4-grid'):
     public_videos_dir = os.path.join(PROJECT_DIR, "public", "videos")
     os.makedirs(public_videos_dir, exist_ok=True)
@@ -147,6 +206,9 @@ def render_single_video(config, media_group, output_path, title, subtitle, rende
         })
 
     # Fixed USER STYLES
+    # Automatically detect the best audio source among the target videos
+    best_audio_idx = detect_best_audio_index(media_group[:target_count])
+
     props = {
         "title": title,
         "subtitle": subtitle,
@@ -161,7 +223,7 @@ def render_single_video(config, media_group, output_path, title, subtitle, rende
         "nameFontFamily": "'M PLUS Rounded 1c', sans-serif",
         "nameFontSize": 1.0,
         "nameStrokeWidth": 8,
-        "audioIndex": 0,
+        "audioIndex": best_audio_idx,
         "layout": layout,
         "durationInSeconds": float(config.get("duration_seconds", 7.0)),
         "items": items
@@ -247,11 +309,11 @@ def main():
     target_folders = find_all_target_folders_and_files(search_base)
     print(f"[Automation] Found {len(target_folders)} target folder(s) to process.")
 
-    today_str = datetime.date.today().strftime("%Y-%m-%d")
+    today_str = get_jst_today().strftime("%Y-%m-%d")
     out_dir = os.path.join(PROJECT_DIR, "out")
     os.makedirs(out_dir, exist_ok=True)
     webhook_url = config.get("discord_webhook_url")
-    today_jp = datetime.date.today().strftime("%Y年%m月%d日")
+    today_jp = get_jst_today().strftime("%Y年%m月%d日")
 
     global_video_count = 0
 
