@@ -6,6 +6,7 @@ import json
 import shutil
 import datetime
 import subprocess
+import argparse
 import requests
 import gdown
 
@@ -57,7 +58,7 @@ def parse_folder_titles(folder_name):
 
     parts = [p.strip() for p in re.split(r'[_\s]+', folder_name) if p.strip()]
 
-    # If first part looks like a date, remove it from title
+    # If first part looks like a date (e.g. 20261029, 1029, 2026-10-29), remove it from title
     if parts and re.match(r'^(20\d\d[-_]?)?\d{2}[-_]?\d{2}$', parts[0]):
         parts = parts[1:]
 
@@ -68,15 +69,22 @@ def parse_folder_titles(folder_name):
     else:
         return default_title, default_subtitle
 
-def find_all_target_folders_and_files(base_dir):
-    now = get_jst_today()
+def find_all_target_folders_and_files(base_dir, target_date=None, process_all=False):
+    """
+    Find ONLY folders matching target_date (or all if process_all is True).
+    Never fall back to older unrelated folders!
+    """
+    if target_date is None:
+        target_date = get_jst_today()
+
     date_patterns = [
-        now.strftime("%Y-%m-%d"),
-        now.strftime("%Y%m%d"),
-        now.strftime("%m-%d"),
-        now.strftime("%m%d"),
-        f"{now.month}_{now.day}",
-        f"{now.month}月{now.day}日",
+        target_date.strftime("%Y-%m-%d"),
+        target_date.strftime("%Y%m%d"),
+        target_date.strftime("%m-%d"),
+        target_date.strftime("%m%d"),
+        f"{target_date.month}_{target_date.day}",
+        f"{target_date.month:02d}_{target_date.day:02d}",
+        f"{target_date.month}月{target_date.day}日",
     ]
 
     matched_folders = []
@@ -88,7 +96,17 @@ def find_all_target_folders_and_files(base_dir):
             if os.path.isdir(p):
                 all_subdirs.append((item, p))
 
-    # 1. Matching today's date
+    if process_all:
+        print("[Automation] Mode: Processing ALL subfolders (--all specified)")
+        for name, p in all_subdirs:
+            media = get_media_in_dir(p)
+            if media:
+                matched_folders.append((name, media))
+        matched_folders.sort(key=lambda x: x[0])
+        return matched_folders
+
+    # Strict match: ONLY folders containing target date patterns
+    print(f"[Automation] Searching folders strictly matching date: {target_date} (patterns: {date_patterns})")
     for name, p in all_subdirs:
         for pat in date_patterns:
             if pat in name:
@@ -97,28 +115,8 @@ def find_all_target_folders_and_files(base_dir):
                     matched_folders.append((name, media))
                 break
 
-    if matched_folders:
-        matched_folders.sort(key=lambda x: x[0])
-        return matched_folders
-
-    # 2. Latest subfolders fallback
-    if all_subdirs:
-        all_subdirs.sort(key=lambda x: x[0], reverse=True)
-        for name, p in all_subdirs:
-            media = get_media_in_dir(p)
-            if media:
-                matched_folders.append((name, media))
-        if matched_folders:
-            return matched_folders
-
-    # 3. Base directory fallback
-    root_media = get_media_in_dir(base_dir)
-    if root_media:
-        return [("root", root_media)]
-
-    # 4. Default public/videos fallback
-    fallback_dir = os.path.join(PROJECT_DIR, "public", "videos")
-    return [("default", get_media_in_dir(fallback_dir))]
+    matched_folders.sort(key=lambda x: x[0])
+    return matched_folders
 
 def clean_person_name(filename, default_name):
     raw = os.path.splitext(filename)[0]
@@ -162,6 +160,29 @@ def get_audio_bitrate(ffprobe_bin, file_path):
         pass
     return 0
 
+def get_media_duration(ffprobe_bin, file_path):
+    """Get duration of a media file in seconds (float)"""
+    if not ffprobe_bin or not os.path.exists(file_path):
+        return 0.0
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext in ('.jpg', '.jpeg', '.png', '.webp'):
+        return 0.0
+    try:
+        cmd = [
+            ffprobe_bin,
+            "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "json",
+            file_path
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        data = json.loads(res.stdout)
+        dur = float(data.get("format", {}).get("duration", 0.0))
+        return dur
+    except Exception:
+        pass
+    return 0.0
+
 def detect_best_audio_index(media_group):
     """Detect which video has the real sound track (bitrate >= 16kbps)"""
     ffprobe_bin = find_ffprobe()
@@ -182,10 +203,27 @@ def detect_best_audio_index(media_group):
 def render_single_video(config, media_group, output_path, title, subtitle, render_id=1, layout='4-grid'):
     public_videos_dir = os.path.join(PROJECT_DIR, "public", "videos")
     os.makedirs(public_videos_dir, exist_ok=True)
+    ffprobe_bin = find_ffprobe()
 
     items = []
     default_names = config.get("default_names", ["みおち", "みなみ", "金丸紗希", "もえ"])
     target_count = 2 if layout == '2-split' else 4
+
+    # Automatically detect the best audio source among the target videos
+    best_audio_idx = detect_best_audio_index(media_group[:target_count])
+
+    # Determine video duration: full length of the audio source video (do not cut at 7s!)
+    audio_file = media_group[best_audio_idx] if best_audio_idx < len(media_group) else media_group[0]
+    audio_dur = get_media_duration(ffprobe_bin, audio_file)
+
+    if audio_dur <= 0:
+        # Fallback: check maximum duration among all videos
+        durations = [get_media_duration(ffprobe_bin, f) for f in media_group[:target_count]]
+        audio_dur = max(durations) if durations else 7.0
+
+    # Ensure duration is reasonable (at least 3.0s, rounded to 1 decimal place)
+    final_duration = round(max(3.0, audio_dur), 1)
+    print(f"[Automation] Video Duration: {final_duration} seconds (full length of audio source)")
 
     for i in range(target_count):
         src_file = media_group[i] if i < len(media_group) else media_group[0]
@@ -206,9 +244,6 @@ def render_single_video(config, media_group, output_path, title, subtitle, rende
         })
 
     # Fixed USER STYLES
-    # Automatically detect the best audio source among the target videos
-    best_audio_idx = detect_best_audio_index(media_group[:target_count])
-
     props = {
         "title": title,
         "subtitle": subtitle,
@@ -225,7 +260,7 @@ def render_single_video(config, media_group, output_path, title, subtitle, rende
         "nameStrokeWidth": 8,
         "audioIndex": best_audio_idx,
         "layout": layout,
-        "durationInSeconds": float(config.get("duration_seconds", 7.0)),
+        "durationInSeconds": final_duration,
         "items": items
     }
 
@@ -233,7 +268,7 @@ def render_single_video(config, media_group, output_path, title, subtitle, rende
     with open(temp_props_path, "w", encoding="utf-8") as f:
         json.dump(props, f, ensure_ascii=False, indent=2)
 
-    print(f"[Automation] Rendering ({layout}): '{title}' / '{subtitle}'")
+    print(f"[Automation] Rendering ({layout}, {final_duration}s): '{title}' / '{subtitle}'")
     print(f"[Automation] Members: {[it['name'] for it in items]}")
     
     env = os.environ.copy()
@@ -256,42 +291,62 @@ def render_single_video(config, media_group, output_path, title, subtitle, rende
         ]
         ret = subprocess.run(cmd, cwd=PROJECT_DIR, env=env)
 
-    if os.path.exists(temp_props_path):
-        os.remove(temp_props_path)
-
     if ret.returncode != 0:
         raise RuntimeError(f"Remotion render failed for {output_path}")
 
     print(f"[Automation] Render finished: {output_path}")
-    return output_path
 
 def send_to_discord(webhook_url, video_path, message_text):
-    if not webhook_url or "YOUR_DISCORD_WEBHOOK" in webhook_url:
-        print("[Automation] ERROR: Discord Webhook URL is missing.")
-        return False
+    if not webhook_url:
+        print("[Automation] Warning: No DISCORD_WEBHOOK_URL specified. Skipping upload.")
+        return
 
     print(f"[Automation] Uploading {video_path} to Discord Webhook...")
     filename = os.path.basename(video_path)
-    
-    with open(video_path, "rb") as f:
-        files = {"file": (filename, f, "video/mp4")}
-        payload = {"content": message_text}
-        res = requests.post(webhook_url, data=payload, files=files, verify=False)
+    file_size_mb = os.path.getsize(video_path) / (1024 * 1024)
+    print(f"[Automation] File size: {file_size_mb:.2f} MB")
 
-    if res.status_code in (200, 204):
-        print("[Automation] Discord delivery successful! (Status 200/204)")
-        return True
-    else:
-        print(f"[Automation] Failed to send to Discord: {res.status_code} - {res.text}")
-        return False
+    if file_size_mb > 24.5:
+        print("[Automation] Warning: Video file is over Discord 25MB limit. Sending text notice only.")
+        payload = {"content": f"{message_text}\n⚠️ 動画ファイルが25MBを超えているためアップロードできませんでした ({file_size_mb:.1f}MB)。"}
+        requests.post(webhook_url, json=payload)
+        return
+
+    try:
+        with open(video_path, "rb") as f:
+            files = {"file": (filename, f, "video/mp4")}
+            payload = {"content": message_text}
+            res = requests.post(webhook_url, data=payload, files=files, timeout=120)
+            if res.status_code in (200, 204):
+                print("[Automation] Discord delivery successful! (Status 200/204)")
+            else:
+                print(f"[Automation] Discord delivery failed: {res.status_code} - {res.text}")
+    except Exception as e:
+        print(f"[Automation] Error uploading to Discord: {e}")
 
 def main():
+    parser = argparse.ArgumentParser(description="TikTok Compare Video Daily Automation")
+    parser.add_argument("--date", help="Target date in YYYY-MM-DD or MMDD format (default: today JST)")
+    parser.add_argument("--all", action="store_true", help="Process all folders found")
+    args = parser.parse_args()
+
     print("=" * 60)
     print(" TikTok Compare Video Daily Automation (Auto 2-Split / 4-Grid)")
     print(f" Execution Time: {datetime.datetime.now()}")
     print("=" * 60)
 
     config = load_config()
+
+    target_date = get_jst_today()
+    if args.date:
+        # Parse custom date
+        clean_d = args.date.strip()
+        if re.match(r'^\d{4}-\d{2}-\d{2}$', clean_d):
+            target_date = datetime.datetime.strptime(clean_d, "%Y-%m-%d").date()
+        elif re.match(r'^\d{4}$', clean_d):
+            # MMDD for current year
+            target_date = datetime.date(target_date.year, int(clean_d[:2]), int(clean_d[2:]))
+        print(f"[Automation] Custom Target Date specified: {target_date}")
 
     # 1. Download from Google Drive
     gdrive_dir = os.path.join(PROJECT_DIR, "_gdrive_download")
@@ -306,14 +361,26 @@ def main():
         if local_drive and os.path.exists(local_drive):
             search_base = local_drive
 
-    target_folders = find_all_target_folders_and_files(search_base)
-    print(f"[Automation] Found {len(target_folders)} target folder(s) to process.")
+    target_folders = find_all_target_folders_and_files(search_base, target_date=target_date, process_all=args.all)
+    print(f"[Automation] Found {len(target_folders)} target folder(s) strictly matching date {target_date}.")
 
-    today_str = get_jst_today().strftime("%Y-%m-%d")
+    webhook_url = config.get("discord_webhook_url")
+    today_jp = target_date.strftime("%Y年%m月%d日")
+
+    if not target_folders:
+        msg = f"ℹ️ **【朝の自動納品】本日の動画素材の確認**\n日付: `{today_jp}` に該当するフォルダがGoogleドライブ上に見つかりませんでした。\n（過去の動画を誤って再送しないよう、本日は処理をスキップしました）"
+        print(f"[Automation] {msg}")
+        if webhook_url:
+            try:
+                requests.post(webhook_url, json={"content": msg})
+            except Exception:
+                pass
+        print("=" * 60)
+        return
+
+    today_str = target_date.strftime("%Y-%m-%d")
     out_dir = os.path.join(PROJECT_DIR, "out")
     os.makedirs(out_dir, exist_ok=True)
-    webhook_url = config.get("discord_webhook_url")
-    today_jp = get_jst_today().strftime("%Y年%m月%d日")
 
     global_video_count = 0
 
