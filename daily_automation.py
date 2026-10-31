@@ -318,7 +318,7 @@ def send_to_discord(webhook_url, video_path, message_text):
         with open(video_path, "rb") as f:
             files = {"file": (filename, f, "video/mp4")}
             payload = {"content": message_text}
-            res = requests.post(webhook_url, data=payload, files=files, timeout=120)
+            res = requests.post(webhook_url, data=payload, files=files, timeout=120, verify=False)
             if res.status_code in (200, 204):
                 print("[Automation] Discord delivery successful! (Status 200/204)")
             else:
