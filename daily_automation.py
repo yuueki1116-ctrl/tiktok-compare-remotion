@@ -298,24 +298,67 @@ def render_single_video(config, media_group, output_path, title, subtitle, rende
 
     print(f"[Automation] Render finished: {output_path}")
 
+def compress_video_for_discord(ffmpeg_bin, input_path, target_max_mb=9.5):
+    """Compress video using ffmpeg so it is guaranteed under Discord free limit"""
+    if not ffmpeg_bin or not os.path.exists(input_path):
+        return input_path
+    
+    file_size_mb = os.path.getsize(input_path) / (1024 * 1024)
+    if file_size_mb <= target_max_mb:
+        return input_path
+
+    print(f"[Automation] File size ({file_size_mb:.2f} MB) exceeds Discord safe limit ({target_max_mb} MB). Optimizing...")
+    base, ext = os.path.splitext(input_path)
+    opt_path = f"{base}_opt{ext}"
+    
+    cmd = [
+        ffmpeg_bin, "-y",
+        "-i", input_path,
+        "-c:v", "libx264",
+        "-crf", "25",
+        "-preset", "fast",
+        "-c:a", "copy",
+        opt_path
+    ]
+    try:
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        opt_size_mb = os.path.getsize(opt_path) / (1024 * 1024)
+        print(f"[Automation] Optimization successful: {file_size_mb:.2f} MB -> {opt_size_mb:.2f} MB")
+        return opt_path
+    except Exception as e:
+        print(f"[Automation] Optimization warning: {e}. Falling back to original.")
+        return input_path
+
 def send_to_discord(webhook_url, video_path, message_text):
     if not webhook_url:
         print("[Automation] Warning: No DISCORD_WEBHOOK_URL specified. Skipping upload.")
         return
 
-    print(f"[Automation] Uploading {video_path} to Discord Webhook...")
-    filename = os.path.basename(video_path)
-    file_size_mb = os.path.getsize(video_path) / (1024 * 1024)
-    print(f"[Automation] File size: {file_size_mb:.2f} MB")
+    # Check and auto-compress if file exceeds 9.5 MB
+    ffprobe_bin = find_ffprobe()
+    ffmpeg_bin = None
+    import shutil
+    p = shutil.which("ffmpeg")
+    if p:
+        ffmpeg_bin = p
+    else:
+        candidates = glob.glob(os.path.join(PROJECT_DIR, "node_modules", "@remotion", "*", "ffmpeg*"))
+        for c in candidates:
+            if os.path.isfile(c):
+                ffmpeg_bin = c
+                break
 
-    if file_size_mb > 24.5:
-        print("[Automation] Warning: Video file is over Discord 25MB limit. Sending text notice only.")
-        payload = {"content": f"{message_text}\n⚠️ 動画ファイルが25MBを超えているためアップロードできませんでした ({file_size_mb:.1f}MB)。"}
-        requests.post(webhook_url, json=payload)
-        return
+    upload_file_path = compress_video_for_discord(ffmpeg_bin, video_path, target_max_mb=9.5)
+
+    print(f"[Automation] Uploading {upload_file_path} to Discord Webhook...")
+    filename = os.path.basename(video_path)
+    file_size_mb = os.path.getsize(upload_file_path) / (1024 * 1024)
+    print(f"[Automation] Upload file size: {file_size_mb:.2f} MB")
 
     try:
-        with open(video_path, "rb") as f:
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        with open(upload_file_path, "rb") as f:
             files = {"file": (filename, f, "video/mp4")}
             payload = {"content": message_text}
             res = requests.post(webhook_url, data=payload, files=files, timeout=120, verify=False)
