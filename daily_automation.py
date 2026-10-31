@@ -236,11 +236,13 @@ def render_single_video(config, media_group, output_path, title, subtitle, rende
 
         def_name = default_names[i] if i < len(default_names) else f"No.{i+1}"
         name = clean_person_name(filename, def_name)
+        item_dur = get_media_duration(ffprobe_bin, src_file)
 
         items.append({
             "name": name,
             "videoSrc": f"videos/{safe_filename}",
-            "startOffset": 0
+            "startOffset": 0,
+            "duration": item_dur if item_dur > 0 else final_duration
         })
 
     # Fixed USER STYLES

@@ -3,6 +3,7 @@ import {
   AbsoluteFill,
   Img,
   OffthreadVideo,
+  Loop,
   Audio,
   interpolate,
   spring,
@@ -129,16 +130,18 @@ export const CompareVideo: React.FC<CompareVideoProps> = ({
                   }}
                 />
               ) : (
-                <OffthreadVideo
-                  src={staticFile(item.videoSrc)}
-                  startFrom={startFrom}
-                  volume={0}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                  }}
-                />
+                <Loop durationInFrames={Math.max(1, Math.round((item.duration || 999) * fps))}>
+                  <OffthreadVideo
+                    src={staticFile(item.videoSrc)}
+                    startFrom={startFrom}
+                    volume={0}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                </Loop>
               )}
 
               {/* Name Overlay */}

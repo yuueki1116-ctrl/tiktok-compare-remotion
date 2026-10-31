@@ -2,6 +2,7 @@ export interface VideoItemConfig {
   name: string;
   videoSrc: string;
   startOffset?: number;
+  duration?: number;
 }
 
 export interface CompareVideoProps {
